@@ -1,7 +1,9 @@
 plugins {
     kotlin("jvm") version "2.4.20"
     `java-gradle-plugin`
-    `maven-publish`
+    // From 0.1.1 this build publishes itself with the plugin that its own first release published.
+    // `maven-publish` is applied by that plugin.
+    id("net.snobo.publish") version "0.1.0"
 }
 
 group = "net.snobo"
@@ -10,10 +12,6 @@ group = "net.snobo"
 version = providers.gradleProperty("version")
     .orElse(providers.gradleProperty("project.version"))
     .getOrElse("local-SNAPSHOT")
-
-repositories {
-    mavenCentral()
-}
 
 kotlin {
     jvmToolchain(21)
@@ -36,7 +34,7 @@ gradlePlugin {
     plugins {
         create("resolution") {
             id = "net.snobo.resolution"
-            implementationClass = "net.snobo.gradle.plugin.ReposiliteSettingsPlugin"
+            implementationClass = "net.snobo.resolution.ReposiliteSettingsPlugin"
             displayName = "Reposilite resolution"
             description = "Registers a self hosted Reposilite instance as a dependency and plugin repository."
         }
@@ -45,29 +43,4 @@ gradlePlugin {
 
 tasks.test {
     useJUnitPlatform()
-}
-
-// Bootstrap publishing: this repository cannot apply the plugin it produces, because the classes of the
-// plugin do not exist while this build is being configured, and no version of it is published yet. The
-// hand written block below is therefore the bootstrap for the first release only: version 0.1.1 replaces
-// it with the `net.snobo.publish` plugin once that plugin has its first release (see TODO.md).
-val reposiliteBaseUrl = providers.gradleProperty("reposiliteUrl").getOrElse("http://127.0.0.1:8080")
-val reposiliteRoute = if (version.toString().endsWith("-SNAPSHOT")) "snapshots" else "releases"
-
-publishing {
-    repositories {
-        maven {
-            name = "Reposilite"
-            url = uri("$reposiliteBaseUrl/$reposiliteRoute")
-            isAllowInsecureProtocol = reposiliteBaseUrl.startsWith("http://")
-            val publisher = providers.gradleProperty("reposilitePublisher").orNull
-            val token = providers.gradleProperty("reposiliteToken").orNull
-            if (publisher != null && token != null) {
-                credentials {
-                    username = publisher
-                    password = token
-                }
-            }
-        }
-    }
 }
