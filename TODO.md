@@ -60,15 +60,19 @@ Open decisions and follow-ups for `resolution-gradle-plugin` (plugin id `net.sno
 - [ ] Gradle Plugin Portal: not publishing there - the plugin is personal and the portal is public.
       Keep publishing to the Reposilite `releases` route.
 
-- [ ] Versioning: pass the version per release with `-Pproject.version=...`; the build falls back to
-      `0.0.0-DEV` when no version is given. `0.1.0` is the first release.
+- [ ] Versioning: pass the version per release with `-Pversion=...` (or `-Pproject.version=...`); the build
+      falls back to `local-SNAPSHOT` when no version is given. `0.1.0` is the first release. Once the
+      `net.snobo.version` plugin is released, this plugin should take its version from release tags
+      (`release/0.2.0`) instead of the command line.
 
 - [ ] Second consumer: `festivali` resolves `net.snobo.*` artifacts from Reposilite. Do not change its
       build until the user asks for it.
 
-- [ ] Self-dogfooding the plugin's own resolution path: decided against. A settings plugin cannot add the
-      repository it is loaded from, so the only options are a published snapshot (a version, a Reposilite
-      or warm cache dependency at settings evaluation, a 24 hour `-SNAPSHOT` dead zone) or a jar from a
-      previous build. Both make this build depend on the artifact it produces. If a real end-to-end run is
-      wanted later, add a small composite build (`pluginManagement { includeBuild("..") }` plus a probe
-      dependency) that applies the plugin from source without a version.
+- [ ] Self-dogfooding this plugin in its own build: decided against. A settings plugin cannot add the
+      repository it is loaded from, so the only options are a published snapshot (a version, a Reposilite or
+      warm cache dependency at settings evaluation, a 24 hour `-SNAPSHOT` dead zone) or a jar from a previous
+      build. Both make this build depend on the artifact it produces, which is not worth it here. The
+      `net.snobo.publish` plugin is dog-fooded from 0.1.1 on, and this plugin is dog-fooded by its consumers
+      (`net.snobo.publish`, `net.snobo.version`). If a real end-to-end run inside this repository is wanted
+      later, add a small composite build (`pluginManagement { includeBuild("..") }` plus a probe dependency)
+      that applies the plugin from source without a version.

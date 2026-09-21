@@ -114,16 +114,24 @@ Without credentials the public routes stay readable and an authorized route fail
 protected route this plugin knows is the private route, which it registers only with `usePrivate = true`; it
 warns when that route is registered without credentials.
 
-## Version handling
+## Release
 
-The version is never hard coded in `build.gradle.kts`. Pass it per release, and pass the Gradle property
-`project.version` explicitly, because `-Pproject.version=...` does not map onto `Project.version`:
+The version is never hard coded in `build.gradle.kts`; a release passes it on the command line.
+`-Pversion=...` is the native Gradle form, and `-Pproject.version=...` is accepted as well, because that
+spelling alone does not map onto `Project.version`. Without a version the build is a local build:
 
 ```bash
-./gradlew -q properties | grep ^version:                    # version: 0.0.0-DEV
-./gradlew -Pproject.version=0.1.0 -q properties | grep ^version:          # version: 0.1.0
-./gradlew -Pproject.version=0.1.0-SNAPSHOT -q properties | grep ^version: # version: 0.1.0-SNAPSHOT
+./gradlew -q properties | grep ^version:                           # version: local-SNAPSHOT
+./gradlew -Pversion=0.1.1 -q properties | grep ^version:           # version: 0.1.1
 ```
+
+```bash
+./gradlew build                                # check the tree
+./gradlew -Pversion=0.1.1 publish              # -> /releases, or /snapshots for a -SNAPSHOT version
+git tag 0.1.1
+```
+
+Later releases take their version from the `net.snobo.version` plugin instead (see `TODO.md`).
 
 ## Development
 
@@ -154,9 +162,9 @@ version, with `isAllowInsecureProtocol` for an `http://` base URL and credential
 plugin (planned for 0.1.1, see `TODO.md`).
 
 ```bash
-./gradlew -Pproject.version=0.1.0 publish            # release, default base URL
-./gradlew -Pproject.version=0.1.0-SNAPSHOT publish   # snapshot    -> /snapshots
-./gradlew -Pproject.version=0.1.0 -PreposiliteUrl=https://repo.example.com publish
+./gradlew -Pversion=0.1.0 publish                 # release, default base URL
+./gradlew -Pversion=0.1.0-SNAPSHOT publish        # snapshot    -> /snapshots
+./gradlew -Pversion=0.1.0 -PreposiliteUrl=https://repo.example.com publish
 ```
 
 Run `publish` on purpose and nowhere else: it writes to the Reposilite instance named by `reposiliteUrl`.

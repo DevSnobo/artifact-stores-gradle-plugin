@@ -5,10 +5,11 @@ plugins {
 }
 
 group = "net.snobo"
-// The version is never hard coded: pass it per release, for example -Pproject.version=0.1.0.
-version = providers.gradleProperty("project.version")
-    .orElse(providers.gradleProperty("version"))
-    .getOrElse("0.0.0-DEV")
+// The version is never hard coded: pass it per release, for example -Pversion=0.1.0. The
+// `project.version` spelling is accepted as well, because -Pproject.version does not map onto Project.version.
+version = providers.gradleProperty("version")
+    .orElse(providers.gradleProperty("project.version"))
+    .getOrElse("local-SNAPSHOT")
 
 repositories {
     mavenCentral()
