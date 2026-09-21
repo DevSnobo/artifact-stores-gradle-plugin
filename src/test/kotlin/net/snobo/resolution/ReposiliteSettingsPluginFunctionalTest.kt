@@ -1,4 +1,4 @@
-package net.snobo.gradle.plugin
+package net.snobo.resolution
 
 import org.gradle.testkit.runner.GradleRunner
 import java.io.File

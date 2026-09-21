@@ -1,4 +1,4 @@
-package net.snobo.gradle.plugin
+package net.snobo.resolution
 
 import java.net.URI
 import kotlin.test.Test

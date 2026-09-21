@@ -1,4 +1,4 @@
-package net.snobo.gradle.plugin
+package net.snobo.resolution
 
 import com.sun.net.httpserver.HttpExchange
 import com.sun.net.httpserver.HttpServer

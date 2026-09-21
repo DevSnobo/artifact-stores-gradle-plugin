@@ -1,4 +1,4 @@
-package net.snobo.gradle.plugin
+package net.snobo.resolution
 
 import org.gradle.api.initialization.resolve.RepositoriesMode
 import org.gradle.api.provider.ListProperty

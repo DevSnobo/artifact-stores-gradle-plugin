@@ -1,4 +1,4 @@
-package net.snobo.gradle.plugin
+package net.snobo.resolution
 
 import org.gradle.api.Action
 import org.gradle.api.GradleException
