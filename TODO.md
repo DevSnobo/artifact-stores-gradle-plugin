@@ -33,12 +33,19 @@ Open decisions and follow-ups for `resolution-gradle-plugin` (plugin id `net.sno
       warns when both are disabled. Verified by the TestKit suite against the stub: an artifact of an
       included group resolves with credentials, a group that is not included never contacts the server.
 
+- [x] 0.1.1 publishes this build with `net.snobo.publish` 0.1.0: the hand written bootstrap block of 0.1.0 is
+      gone and `checkReposilitePublishTarget` runs in front of both publications before the first upload.
+
 ## Deferred
 
-- [ ] **Version 0.1.1: replace the bootstrap publishing block** in `build.gradle.kts` with the
-      `net.snobo.publish` plugin once that plugin has its first release (planned release 0.1.1).
-      The hand written block exists only because this repository cannot apply a plugin that is not
-      published yet.
+- [ ] **0.1.2: apply this plugin to its own build.** 0.1.1 publishes itself with `net.snobo.publish` 0.1.0, but
+      this plugin cannot be applied before 0.1.2: the published 0.1.0 carries the pre-split package
+      `net.snobo.gradle.plugin`, the working tree uses `net.snobo.resolution`, and a settings plugin is loaded
+      from its published jar. At 0.1.2 add the manual `pluginManagement` entry for 0.1.1, apply
+      `id("net.snobo.resolution")` in `settings.gradle.kts`, move `mavenCentral()` out of the build script and
+      set `reposilite.repositoriesMode = RepositoriesMode.FAIL_ON_PROJECT_REPOS`. Acceptance: a `net.snobo`
+      dependency resolves through Reposilite in this build, and the plugin is still resolved from the manual
+      entry.
 
 - [ ] HTTPS: currently plain HTTP on loopback (`http://127.0.0.1:8080`). The plugin already handles
       `https` transparently and `reposilite.allowInsecure = false` fails plain HTTP builds. Still
@@ -61,18 +68,24 @@ Open decisions and follow-ups for `resolution-gradle-plugin` (plugin id `net.sno
       Keep publishing to the Reposilite `releases` route.
 
 - [ ] Versioning: pass the version per release with `-Pversion=...` (or `-Pproject.version=...`); the build
-      falls back to `local-SNAPSHOT` when no version is given. `0.1.0` is the first release. Once the
+      falls back to `local-SNAPSHOT` when no version is given. `0.1.0` and `0.1.1` are released. Once the
       `net.snobo.version` plugin is released, this plugin should take its version from release tags
       (`release/0.2.0`) instead of the command line.
+- [ ] Shared helper code is duplicated. `ReposiliteAccess`, `ReposiliteDefaults`, the property/environment
+      lookup and the URL helpers exist in this repository and in `publish-gradle-plugin` (the packages differ
+      on purpose - `net.snobo.resolution` here, `net.snobo.publish` there - so both plugins can sit on one
+      classpath). If the two copies drift, extract `net.snobo:reposilite-support` and let both plugins depend
+      on it.
+- [ ] Migrate the consumers. The settings half moved from `net.snobo.reposilite` to `net.snobo.resolution`
+      and the publish half from `net.snobo.reposilite-publish` to `net.snobo.publish`. `kmp-base-lib` and
+      `festivali` still name the old ids, which only resolve through the old snapshot, so they keep using the
+      pre-split plugin until they are updated. Do not touch `kmp-base-lib` without being asked.
 
 - [ ] Second consumer: `festivali` resolves `net.snobo.*` artifacts from Reposilite. Do not change its
       build until the user asks for it.
 
-- [ ] Self-dogfooding this plugin in its own build: decided against. A settings plugin cannot add the
-      repository it is loaded from, so the only options are a published snapshot (a version, a Reposilite or
-      warm cache dependency at settings evaluation, a 24 hour `-SNAPSHOT` dead zone) or a jar from a previous
-      build. Both make this build depend on the artifact it produces, which is not worth it here. The
-      `net.snobo.publish` plugin is dog-fooded from 0.1.1 on, and this plugin is dog-fooded by its consumers
-      (`net.snobo.publish`, `net.snobo.version`). If a real end-to-end run inside this repository is wanted
-      later, add a small composite build (`pluginManagement { includeBuild("..") }` plus a probe dependency)
-      that applies the plugin from source without a version.
+- [ ] Self-dogfooding history. 0.1.0 was published with a hand written block, because no version of the
+      plugin existed while that build was configured; from 0.1.1 the sibling `net.snobo.publish` publishes this
+      repository. Applying this plugin to its own build always needs a published version plus the manual
+      `pluginManagement` entry, because a settings plugin cannot add the repository it is loaded from - which
+      is why the full self-application waits for 0.1.2 (see the Deferred item).

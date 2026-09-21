@@ -5,7 +5,7 @@ dependency and plugin repository.
 
 * plugin id: `net.snobo.resolution`
 * applied in `settings.gradle.kts` (it is a settings plugin)
-* implementation class: `net.snobo.gradle.plugin.ReposiliteSettingsPlugin`
+* implementation class: `net.snobo.resolution.ReposiliteSettingsPlugin`
 
 Only the Reposilite routes `releases` and `snapshots` are registered by default; the `private` route needs a
 token, also for reads, and is opt in.
@@ -18,7 +18,7 @@ the repository.
 
 ```kotlin
 // settings.gradle.kts
-plugins { id("net.snobo.resolution") version "0.1.0" }
+plugins { id("net.snobo.resolution") version "0.1.1" }
 
 reposilite {
     // url = uri("http://127.0.0.1:8080")   // default, or the reposiliteUrl Gradle property
@@ -92,7 +92,7 @@ pluginManagement {
     }
 }
 
-plugins { id("net.snobo.resolution") version "0.1.0" }
+plugins { id("net.snobo.resolution") version "0.1.1" }
 ```
 
 Use `$base/snapshots` instead of `$base/releases` to resolve a `-SNAPSHOT` version of this plugin. Consumers
@@ -141,30 +141,26 @@ REPOSILITE_TEST_GRADLE_VERSION=8.14.3 ./gradlew test --rerun   # same suite agai
 ```
 
 The functional tests start a local HTTP stub that imitates the Reposilite endpoints (artifact GET for the
-`releases`, `snapshots` and `private` routes, with basic authentication), so no server is required and the
-build is hermetic: `./gradlew build` succeeds with no Reposilite running or reachable.
+`releases`, `snapshots` and `private` routes, with basic authentication), so the tests need no server. The
+build itself does: it resolves the plugin that publishes it from Reposilite. With a warm cache,
+`./gradlew build --offline` works while the server is down.
 
-### Why this build does not apply its own plugin
+### Self dog-fooding
 
-A plugin cannot configure the build that produces it: its classes do not exist while the build that creates
-the jar is still being configured. Gradle rejects the self reference:
+`0.1.0` was published with a hand written `maven-publish` block, because no version of the plugin existed
+while that build was configured. From `0.1.1` on this build publishes itself through `net.snobo.publish`
+`0.1.0`: `checkReposilitePublishTarget` runs before the first upload, `-SNAPSHOT` goes to `/snapshots` and
+everything else to `/releases`.
 
-```text
-Error resolving plugin [id: 'net.snobo.resolution']
-> Expected vintage state of build ':resolution-gradle-plugin' to be in state SettingsLoaded or later
-  but is in state Created and transitioning to SettingsLoaded.
+This plugin cannot be applied to this build before `0.1.2`. A settings plugin needs a published version whose
+package matches the working tree, and `0.1.0` still carries the pre-split package
+`net.snobo.gradle.plugin`; the manual `pluginManagement` entry in `settings.gradle.kts` is what resolves the
+publish plugin, and it stays anyway, because a settings plugin cannot add the repository it is loaded from.
+
 ```
-
-`build.gradle.kts` therefore keeps a hand written `maven-publish` block as the bootstrap publication for the
-first release: it publishes to `$reposiliteUrl/releases`, or to `$reposiliteUrl/snapshots` for a `-SNAPSHOT`
-version, with `isAllowInsecureProtocol` for an `http://` base URL and credentials from
-`reposilitePublisher`/`reposiliteToken`. A later release replaces that block with the shared publishing
-plugin (planned for 0.1.1, see `TODO.md`).
-
-```bash
-./gradlew -Pversion=0.1.0 publish                 # release, default base URL
-./gradlew -Pversion=0.1.0-SNAPSHOT publish        # snapshot    -> /snapshots
-./gradlew -Pversion=0.1.0 -PreposiliteUrl=https://repo.example.com publish
+./gradlew -Pversion=0.1.1 publish                 # release, default base URL
+./gradlew -Pversion=0.1.1-SNAPSHOT publish        # snapshot    -> /snapshots
+./gradlew -Pversion=0.1.1 -PreposiliteUrl=https://repo.example.com publish
 ```
 
 Run `publish` on purpose and nowhere else: it writes to the Reposilite instance named by `reposiliteUrl`.
