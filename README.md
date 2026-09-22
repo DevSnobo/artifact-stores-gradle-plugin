@@ -128,8 +128,11 @@ spelling alone does not map onto `Project.version`. Without a version the build 
 ```bash
 ./gradlew build                                # check the tree
 ./gradlew -Pversion=0.1.1 publish              # -> /releases, or /snapshots for a -SNAPSHOT version
-git tag 0.1.1
+git tag release/0.1.1 && git push origin release/0.1.1
 ```
+
+Release tags always follow `release/X.Y.Z` (or `release/X.Y.Z-RCn`), the pattern the `net.snobo.version` plugin
+reads, so a later adoption of that plugin needs no retagging.
 
 Later releases take their version from the `net.snobo.version` plugin instead (see `TODO.md`).
 
