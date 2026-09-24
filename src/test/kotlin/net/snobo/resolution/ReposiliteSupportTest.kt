@@ -7,7 +7,6 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class ReposiliteSupportTest {
-
     private val base = URI("http://127.0.0.1:8080")
 
     @Test
@@ -22,12 +21,18 @@ class ReposiliteSupportTest {
 
     @Test
     fun `keeps a url that already ends with the route`() {
-        assertEquals("http://127.0.0.1:8080/releases", URI("http://127.0.0.1:8080/releases").withRoute("releases").toString())
+        assertEquals(
+            "http://127.0.0.1:8080/releases",
+            URI("http://127.0.0.1:8080/releases").withRoute("releases").toString(),
+        )
     }
 
     @Test
     fun `keeps a base path when appending the route`() {
-        assertEquals("https://repo.example.com/maven/releases", URI("https://repo.example.com/maven").withRoute("releases").toString())
+        assertEquals(
+            "https://repo.example.com/maven/releases",
+            URI("https://repo.example.com/maven").withRoute("releases").toString(),
+        )
     }
 
     @Test
@@ -52,14 +57,15 @@ class ReposiliteSupportTest {
 
     @Test
     fun `a plain http private route makes the whole access insecure`() {
-        val access = ReposiliteAccess(
-            baseUrl = URI("https://repo.example.com"),
-            releasesUrl = URI("https://repo.example.com/releases"),
-            snapshotsUrl = URI("https://repo.example.com/snapshots"),
-            privateUrl = URI("http://repo.example.com/private"),
-            publisher = "token",
-            token = "secret",
-        )
+        val access =
+            ReposiliteAccess(
+                baseUrl = URI("https://repo.example.com"),
+                releasesUrl = URI("https://repo.example.com/releases"),
+                snapshotsUrl = URI("https://repo.example.com/snapshots"),
+                privateUrl = URI("http://repo.example.com/private"),
+                publisher = "token",
+                token = "secret",
+            )
 
         assertTrue(access.isInsecure)
     }

@@ -14,8 +14,11 @@ internal class ReposiliteStub(
     /** Routes that hand out artifacts. Other routes answer 404, like an empty repository. */
     private val artifactRoutes: Set<String> = setOf("releases", "snapshots", "private"),
 ) {
-
-    data class Recorded(val method: String, val path: String, val authorization: String?)
+    data class Recorded(
+        val method: String,
+        val path: String,
+        val authorization: String?,
+    )
 
     private val server: HttpServer = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
     val requests: MutableList<Recorded> = CopyOnWriteArrayList()
@@ -37,26 +40,47 @@ internal class ReposiliteStub(
         requests.add(Recorded(exchange.requestMethod, path, authorization))
 
         when {
-            path.endsWith("/maven-metadata.xml") -> notFound(exchange)
+            path.endsWith("/maven-metadata.xml") -> {
+                notFound(exchange)
+            }
 
-            path.endsWith(".pom") && servesArtifacts(path) -> respond(exchange, 200, pom(), "application/xml")
-            path.endsWith(".pom") -> notFound(exchange)
+            path.endsWith(".pom") && servesArtifacts(path) -> {
+                respond(exchange, 200, pom(), "application/xml")
+            }
+
+            path.endsWith(".pom") -> {
+                notFound(exchange)
+            }
 
             path.endsWith(".sha1") && servesArtifacts(path) -> {
                 val target = path.removeSuffix(".sha1")
                 val content = if (target.endsWith(".pom")) pom().toByteArray() else "stub artifact".toByteArray()
                 respond(exchange, 200, sha1(content), "text/plain")
             }
-            path.endsWith(".sha1") -> notFound(exchange)
 
-            path.endsWith(".md5") || path.endsWith(".sha256") || path.endsWith(".sha512") -> notFound(exchange)
+            path.endsWith(".sha1") -> {
+                notFound(exchange)
+            }
 
-            path.endsWith(".module") -> notFound(exchange)
+            path.endsWith(".md5") || path.endsWith(".sha256") || path.endsWith(".sha512") -> {
+                notFound(exchange)
+            }
 
-            path.endsWith(".jar") && servesArtifacts(path) -> respond(exchange, 200, "stub artifact", "application/java-archive")
-            path.endsWith(".jar") -> notFound(exchange)
+            path.endsWith(".module") -> {
+                notFound(exchange)
+            }
 
-            else -> notFound(exchange)
+            path.endsWith(".jar") && servesArtifacts(path) -> {
+                respond(exchange, 200, "stub artifact", "application/java-archive")
+            }
+
+            path.endsWith(".jar") -> {
+                notFound(exchange)
+            }
+
+            else -> {
+                notFound(exchange)
+            }
         }
     }
 
@@ -66,7 +90,8 @@ internal class ReposiliteStub(
     private fun notFound(exchange: HttpExchange) =
         respond(exchange, 404, """{"status":404,"message":"File not found"}""")
 
-    private fun pom() = """
+    private fun pom() =
+        """
         <project xmlns="http://maven.apache.org/POM/4.0.0">
           <modelVersion>4.0.0</modelVersion>
           <groupId>net.snobo.probe</groupId>
@@ -74,12 +99,17 @@ internal class ReposiliteStub(
           <version>1.0</version>
           <packaging>jar</packaging>
         </project>
-    """.trimIndent()
+        """.trimIndent()
 
     private fun sha1(bytes: ByteArray): String =
         MessageDigest.getInstance("SHA-1").digest(bytes).joinToString("") { "%02x".format(it) }
 
-    private fun respond(exchange: HttpExchange, status: Int, body: String, contentType: String = "application/json") {
+    private fun respond(
+        exchange: HttpExchange,
+        status: Int,
+        body: String,
+        contentType: String = "application/json",
+    ) {
         val bytes = body.toByteArray()
         exchange.responseHeaders.add("Content-Type", contentType)
         if (exchange.requestMethod.equals("HEAD", ignoreCase = true)) {

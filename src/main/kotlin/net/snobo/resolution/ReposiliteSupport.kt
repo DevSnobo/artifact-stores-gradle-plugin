@@ -35,8 +35,10 @@ internal object ReposiliteDefaults {
 }
 
 /** Reads a value from a Gradle property, then from an environment variable. */
-internal fun ProviderFactory.reposiliteValue(property: String, environment: String): Provider<String> =
-    gradleProperty(property).orElse(environmentVariable(environment))
+internal fun ProviderFactory.reposiliteValue(
+    property: String,
+    environment: String,
+): Provider<String> = gradleProperty(property).orElse(environmentVariable(environment))
 
 /**
  * Token name: `reposilitePublisher`, with `reposiliteUsername` accepted as an alias because older hand
@@ -48,7 +50,10 @@ internal fun ProviderFactory.reposilitePublisher(): Provider<String> =
         .orElse(environmentVariable(ReposiliteDefaults.PUBLISHER_ENVIRONMENT))
         .orElse(environmentVariable(ReposiliteDefaults.USERNAME_ENVIRONMENT))
 
-internal fun uriOf(value: String, source: String): URI {
+internal fun uriOf(
+    value: String,
+    source: String,
+): URI {
     val trimmed = value.trim()
     if (trimmed.isEmpty()) {
         throw GradleException("$source is empty. Expected a URL such as ${ReposiliteDefaults.DEFAULT_URL}.")
@@ -102,20 +107,28 @@ internal fun RepositoryHandler.reposiliteMavenRepository(
     access: ReposiliteAccess,
     allowInsecureProtocol: Boolean,
     includeGroups: List<String>,
-): MavenArtifactRepository = maven(Action { repository ->
-    repository.name = name
-    repository.setUrl(url)
-    repository.isAllowInsecureProtocol = allowInsecureProtocol
-    if (includeGroups.isNotEmpty()) {
-        repository.content(Action { content -> includeGroups.forEach(content::includeGroupAndSubgroups) })
-    }
-    if (access.hasCredentials) {
-        repository.credentials(PasswordCredentials::class.java, Action { credentials ->
-            credentials.username = access.publisher
-            credentials.password = access.token
-        })
-        repository.authentication(Action { authentication ->
-            authentication.create("basic", BasicAuthentication::class.java)
-        })
-    }
-})
+): MavenArtifactRepository =
+    maven(
+        Action { repository ->
+            repository.name = name
+            repository.setUrl(url)
+            repository.isAllowInsecureProtocol = allowInsecureProtocol
+            if (includeGroups.isNotEmpty()) {
+                repository.content(Action { content -> includeGroups.forEach(content::includeGroupAndSubgroups) })
+            }
+            if (access.hasCredentials) {
+                repository.credentials(
+                    PasswordCredentials::class.java,
+                    Action { credentials ->
+                        credentials.username = access.publisher
+                        credentials.password = access.token
+                    },
+                )
+                repository.authentication(
+                    Action { authentication ->
+                        authentication.create("basic", BasicAuthentication::class.java)
+                    },
+                )
+            }
+        },
+    )

@@ -12,7 +12,6 @@ import kotlin.test.assertTrue
 private val testGradleVersion: String? = System.getenv("REPOSILITE_TEST_GRADLE_VERSION")
 
 class ReposiliteSettingsPluginFunctionalTest {
-
     private lateinit var projectDir: File
     private lateinit var testKitDir: File
     private lateinit var stub: ReposiliteStub
@@ -31,21 +30,29 @@ class ReposiliteSettingsPluginFunctionalTest {
         testKitDir.deleteRecursively()
     }
 
-    private fun write(path: String, content: String) {
+    private fun write(
+        path: String,
+        content: String,
+    ) {
         val file = File(projectDir, path)
         file.parentFile?.mkdirs()
         file.writeText(content.trimIndent())
     }
 
-    private fun credentials(name: String = "net-snobo-publisher", secret: String = "stub-secret") {
+    private fun credentials(
+        name: String = "net-snobo-publisher",
+        secret: String = "stub-secret",
+    ) {
         write("gradle.properties", "reposilitePublisher=$name\nreposiliteToken=$secret\n")
     }
 
     private fun runner(vararg args: String): GradleRunner {
-        val runner = GradleRunner.create()
-            .withProjectDir(projectDir)
-            .withPluginClasspath()
-            .withTestKitDir(testKitDir)
+        val runner =
+            GradleRunner
+                .create()
+                .withProjectDir(projectDir)
+                .withPluginClasspath()
+                .withTestKitDir(testKitDir)
         testGradleVersion?.let { runner.withGradleVersion(it) }
         return runner.withArguments(*args, "--stacktrace")
     }
@@ -130,7 +137,10 @@ class ReposiliteSettingsPluginFunctionalTest {
 
         assertTrue(result.output.contains("probe-1.0.jar"), result.output)
         testGradleVersion?.let { requested ->
-            assertTrue(result.output.contains("GRADLE_VERSION=$requested"), "expected Gradle $requested in:\n${result.output}")
+            assertTrue(
+                result.output.contains("GRADLE_VERSION=$requested"),
+                "expected Gradle $requested in:\n${result.output}",
+            )
         }
         val requests = stub.requests.filter { it.path.startsWith("/releases/net/snobo/probe/") }
         assertTrue(requests.isNotEmpty(), "expected artifact requests, got ${stub.requests}")

@@ -11,7 +11,6 @@ import java.net.URI
  * Apply `net.snobo.resolution` in `settings.gradle.kts` and configure this extension there.
  */
 abstract class ReposiliteSettingsExtension {
-
     /** Base URL of the Reposilite instance, without a repository route. */
     abstract val url: Property<URI>
 
