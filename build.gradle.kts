@@ -3,7 +3,7 @@ plugins {
     `java-gradle-plugin`
     // From 0.1.1 this build publishes itself with the plugin that its own first release published.
     // `maven-publish` is applied by that plugin.
-    id("net.snobo.publish") version "0.1.0"
+    id("net.snobo.publish") version "0.1.3"
 }
 
 group = "net.snobo"
