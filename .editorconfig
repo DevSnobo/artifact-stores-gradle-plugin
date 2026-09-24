@@ -13,6 +13,9 @@ ktlint_code_style = ktlint_official
 [*.{kt,kts}]
 ij_kotlin_allow_trailing_comma = true
 ij_kotlin_allow_trailing_comma_on_call_site = true
+# Compose convention: a @Composable function is PascalCase. Without this property the standard
+# function-naming rule reports every composable in the project (cannot be auto-corrected).
+ktlint_function_naming_ignore_when_annotated_with = Composable
 
 [*.md]
 trim_trailing_whitespace = false
