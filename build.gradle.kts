@@ -6,16 +6,11 @@ plugins {
     // From 0.1.1 this build publishes itself with the plugin that its own first release published.
     // `maven-publish` is applied by that plugin.
     id("net.snobo.publish") version "0.1.3"
+    // The version comes from the release tag at HEAD; every other commit is local-SNAPSHOT.
+    id("net.snobo.version") version "1.0.0"
 }
 
 group = "net.snobo"
-// The version is never hard coded: pass it per release, for example -Pversion=0.1.0. The
-// `project.version` spelling is accepted as well, because -Pproject.version does not map onto Project.version.
-version =
-    providers
-        .gradleProperty("version")
-        .orElse(providers.gradleProperty("project.version"))
-        .getOrElse("local-SNAPSHOT")
 
 kotlin {
     jvmToolchain(21)

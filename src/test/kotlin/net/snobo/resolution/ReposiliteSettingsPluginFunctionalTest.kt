@@ -47,12 +47,19 @@ class ReposiliteSettingsPluginFunctionalTest {
     }
 
     private fun runner(vararg args: String): GradleRunner {
+        // CI exports the Reposilite credentials for this build. TestKit builds inherit the environment, so a
+        // fixture that expects no credentials would silently see CI's. Keep those variables out of scratch builds.
+        val environment =
+            System.getenv().filterKeys {
+                !it.startsWith("ORG_GRADLE_PROJECT_reposilite") && !it.startsWith("REPOSILITE_")
+            }
         val runner =
             GradleRunner
                 .create()
                 .withProjectDir(projectDir)
                 .withPluginClasspath()
                 .withTestKitDir(testKitDir)
+                .withEnvironment(environment)
         testGradleVersion?.let { runner.withGradleVersion(it) }
         return runner.withArguments(*args, "--stacktrace")
     }
