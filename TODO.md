@@ -2,6 +2,17 @@
 
 Open decisions and follow-ups for `resolution-gradle-plugin` (plugin id `net.snobo.resolution`).
 
+## 0.1.2
+
+- [x] Tag-driven versioning. The build applies `net.snobo.version` 1.0.0, which reads the version from a
+      `release/<version>` tag at HEAD and falls back to `local-SNAPSHOT` on every other commit. The old
+      `-Pversion` / `-Pproject.version` block is gone; `release/0.1.2` is the test release.
+- [x] Release workflow. `.github/workflows/release.yml` runs on `release/**` tags, reuses `ci.yml` through
+      `workflow_call`, requires the tag to be an ancestor of `origin/main`, checks with
+      `-Pversion.requireRelease=true` against the read-only Reposilite credentials, and then publishes
+      `net.snobo.resolution:net.snobo.resolution.gradle.plugin` and `net.snobo:resolution-gradle-plugin`
+      with the release token.
+
 ## Waiting on a decision
 
 - [ ] **Item 6 from the design review (open): token provisioning.**
@@ -58,7 +69,8 @@ Open decisions and follow-ups for `resolution-gradle-plugin` (plugin id `net.sno
 - [ ] Modules that declare their own repositories: the plugin warns when
       `repositoriesMode = PREFER_PROJECT` makes its repositories ineffective. Nothing else implemented.
 
-- [ ] CI: GitHub Actions (or other) job that runs the TestKit suite on Gradle 8.14.x and 9.x.
+- [x] CI: GitHub Actions runs `check` and the TestKit suite on Gradle 8.14.3 and 9.7.1
+      (`.github/workflows/ci.yml`). The release workflow reuses that file through `workflow_call`.
 
 - [ ] The `test` task ignores `REPOSILITE_TEST_GRADLE_VERSION`, so `REPOSILITE_TEST_GRADLE_VERSION=8.14.3
       ./gradlew test` leaves `:test` UP-TO-DATE after a normal run and silently tests Gradle 9.7.1 instead.
@@ -67,10 +79,9 @@ Open decisions and follow-ups for `resolution-gradle-plugin` (plugin id `net.sno
 - [ ] Gradle Plugin Portal: not publishing there - the plugin is personal and the portal is public.
       Keep publishing to the Reposilite `releases` route.
 
-- [ ] Versioning: pass the version per release with `-Pversion=...` (or `-Pproject.version=...`); the build
-      falls back to `local-SNAPSHOT` when no version is given. `0.1.0` and `0.1.1` are released. Once the
-      `net.snobo.version` plugin is released, this plugin should take its version from release tags
-      (`release/0.2.0`) instead of the command line.
+- [x] Versioning: from 0.1.2 the build takes its version from release tags (`release/0.1.2`,
+      `release/0.2.0`, ...) through `net.snobo.version`; every other commit is `local-SNAPSHOT`.
+      `0.1.0` and `0.1.1` were released from the command line.
 - [ ] Shared helper code is duplicated. `ReposiliteAccess`, `ReposiliteDefaults`, the property/environment
       lookup and the URL helpers exist in this repository and in `publish-gradle-plugin` (the packages differ
       on purpose - `net.snobo.resolution` here, `net.snobo.publish` there - so both plugins can sit on one
