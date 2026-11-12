@@ -27,6 +27,9 @@ jobs:
           tags: tag:ci
           ping: ${{ vars.VPS_TAILNET_HOST }}
       - uses: gradle/actions/setup-gradle@v6.4.1
+        with:
+          # The wrapper JAR is checked against the published checksums before Gradle runs.
+          validate-wrappers: true
       - name: Verify
         env:
           ORG_GRADLE_PROJECT_reposiliteUrl: ${{ vars.REPOSILITE_URL }}
@@ -55,6 +58,9 @@ jobs:
           tags: tag:ci
           ping: ${{ vars.VPS_TAILNET_HOST }}
       - uses: gradle/actions/setup-gradle@v6.4.1
+        with:
+          # The wrapper JAR is checked against the published checksums before Gradle runs.
+          validate-wrappers: true
       - name: Run the TestKit suite
         env:
           ARTIFACT_STORE_TEST_GRADLE_VERSION: ${{ matrix.gradle }}

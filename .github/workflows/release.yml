@@ -37,6 +37,9 @@ jobs:
           tags: tag:ci
           ping: ${{ vars.VPS_TAILNET_HOST }}
       - uses: gradle/actions/setup-gradle@v6.4.1
+        with:
+          # The wrapper JAR is checked against the published checksums before Gradle runs.
+          validate-wrappers: true
       - name: Check the release version
         env:
           ORG_GRADLE_PROJECT_reposiliteUrl: ${{ vars.REPOSILITE_URL }}

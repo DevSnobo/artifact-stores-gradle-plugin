@@ -3,6 +3,7 @@ import org.gradle.api.publish.PublishingExtension
 import org.gradle.api.publish.maven.MavenPublication
 import org.gradle.api.publish.tasks.GenerateModuleMetadata
 import org.gradle.plugin.compatibility.compatibility
+import java.util.Properties
 
 plugins {
     kotlin("jvm") version "2.4.20"
@@ -88,6 +89,37 @@ tasks.test {
         "artifactStoreTestGradleVersion",
         providers.environmentVariable("ARTIFACT_STORE_TEST_GRADLE_VERSION").orElse("wrapper"),
     )
+}
+
+/**
+ * Fails when the wrapper stops pinning its distribution checksum, or when the properties file and the
+ * supported Gradle version disagree. setup-gradle validates the wrapper JAR itself.
+ */
+val verifyWrapper =
+    tasks.register("verifyWrapper") {
+        group = "verification"
+        description = "Checks that the Gradle wrapper is pinned to the expected version and checksum."
+        val propertiesFile = layout.projectDirectory.file("gradle/wrapper/gradle-wrapper.properties")
+        inputs.file(propertiesFile)
+        doLast {
+            val properties =
+                Properties().apply {
+                    propertiesFile.asFile.inputStream().use { load(it) }
+                }
+            val expectedVersion = "9.9.1"
+            val distributionUrl = properties.getProperty("distributionUrl").orEmpty()
+            check(distributionUrl.endsWith("gradle-$expectedVersion-bin.zip")) {
+                "The wrapper distribution must be Gradle $expectedVersion (bin), but distributionUrl is: $distributionUrl"
+            }
+            val checksum = properties.getProperty("distributionSha256Sum").orEmpty()
+            check(checksum.matches(Regex("[0-9a-f]{64}"))) {
+                "gradle-wrapper.properties must pin distributionSha256Sum to the SHA-256 of the distribution ZIP."
+            }
+        }
+    }
+
+tasks.check {
+    dependsOn(verifyWrapper)
 }
 
 tasks.jar {
