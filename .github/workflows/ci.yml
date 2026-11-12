@@ -28,6 +28,12 @@ jobs:
           ping: ${{ vars.VPS_TAILNET_HOST }}
       - uses: gradle/actions/setup-gradle@v6.4.1
         with:
+          # MIT provider over actions/cache: no commercial cache service and no billing surprise.
+          cache-provider: basic
+          # Branches restore; only the default branch writes. Release tags stay read-only.
+          cache-read-only: ${{ github.event.repository != null && github.ref_name != github.event.repository.default_branch }}
+          # Required before setup-gradle stores configuration-cache data.
+          cache-encryption-key: ${{ secrets.GRADLE_CACHE_ENCRYPTION_KEY }}
           # The wrapper JAR is checked against the published checksums before Gradle runs.
           validate-wrappers: true
       - name: Verify
@@ -59,6 +65,12 @@ jobs:
           ping: ${{ vars.VPS_TAILNET_HOST }}
       - uses: gradle/actions/setup-gradle@v6.4.1
         with:
+          # MIT provider over actions/cache: no commercial cache service and no billing surprise.
+          cache-provider: basic
+          # Branches restore; only the default branch writes. Release tags stay read-only.
+          cache-read-only: ${{ github.event.repository != null && github.ref_name != github.event.repository.default_branch }}
+          # Required before setup-gradle stores configuration-cache data.
+          cache-encryption-key: ${{ secrets.GRADLE_CACHE_ENCRYPTION_KEY }}
           # The wrapper JAR is checked against the published checksums before Gradle runs.
           validate-wrappers: true
       - name: Run the TestKit suite
