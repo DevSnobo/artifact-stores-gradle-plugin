@@ -40,7 +40,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        gradle: ["8.14.3", "9.7.1"]
+        gradle: ["8.14.7", "9.9.1"]
     steps:
       - uses: actions/checkout@v7.0.1
       - uses: actions/setup-java@v6.2.0
@@ -57,8 +57,8 @@ jobs:
       - uses: gradle/actions/setup-gradle@v6.4.1
       - name: Run the TestKit suite
         env:
-          REPOSILITE_TEST_GRADLE_VERSION: ${{ matrix.gradle }}
+          ARTIFACT_STORE_TEST_GRADLE_VERSION: ${{ matrix.gradle }}
           ORG_GRADLE_PROJECT_reposiliteUrl: ${{ vars.REPOSILITE_URL }}
           ORG_GRADLE_PROJECT_reposilitePublisher: ci-read
           ORG_GRADLE_PROJECT_reposiliteToken: ${{ secrets.REPOSILITE_CI_READ_TOKEN }}
-        run: ./gradlew test --rerun
+        run: ./gradlew test

@@ -27,8 +27,8 @@ plugins {
     id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
 }
 
-// The build declares its repositories in settings. From 0.1.2 the resolution plugin adds the Reposilite
-// repositories for the net.snobo groups on top of this (see TODO.md).
+// The manual pluginManagement entries above resolve the net.snobo publishing plugins from Reposilite;
+// everything else comes from Maven Central.
 dependencyResolutionManagement {
     repositories {
         mavenCentral()
@@ -36,3 +36,5 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "resolution-gradle-plugin"
+
+include(":artifact-store-support")

@@ -1,169 +1,316 @@
-# resolution-gradle-plugin
+# Artifact stores Gradle plugin
 
-A Gradle plugin that wires a self hosted [Reposilite](https://reposilite.com) instance into a build as a
-dependency and plugin repository.
+A Gradle settings plugin that registers Maven artifact stores as dependency and plugin repositories.
+One block in `settings.gradle.kts` configures Reposilite, Nexus, Artifactory or any generic Maven repository,
+including its URLs, credentials and repository routes.
 
-* plugin id: `net.snobo.resolution`
-* applied in `settings.gradle.kts` (it is a settings plugin)
-* implementation class: `net.snobo.resolution.ReposiliteSettingsPlugin`
+* Plugin id: `net.snobo.artifact-stores`
+* Applied in `settings.gradle.kts`
+* Requires Gradle 8.14.7 or newer and Java 17 or newer
+* Licensed under Apache-2.0 (see [LICENSE](LICENSE) and [NOTICE](NOTICE))
 
-Only the Reposilite routes `releases` and `snapshots` are registered by default; the `private` route needs a
-token, also for reads, and is opt in.
+## What it does
 
-Credentials come from the Gradle properties `reposilitePublisher` (the **token name**) and
-`reposiliteToken` (the **token secret**), so they normally live in `~/.gradle/gradle.properties` and never in
-the repository.
+The plugin reads its configuration while Gradle evaluates settings. It then adds Maven repositories to
+`dependencyResolutionManagement.repositories` (for dependencies) and `pluginManagement.repositories` (for
+Gradle plugins), before any project is configured. Both kinds of resolution can therefore use the same store.
 
-## Usage
+Each store is created by a preset function: `reposilite`, `nexus`, `artifactory` or `generic`. The preset
+applies the default routes, authentication mode and base URL of that product. A configuration block overrides
+anything that differs.
+
+## Install
 
 ```kotlin
 // settings.gradle.kts
-plugins { id("net.snobo.resolution") version "0.1.1" }
-
-reposilite {
-    // url = uri("http://127.0.0.1:8080")   // default, or the reposiliteUrl Gradle property
-    // includeGroups.add("net.snobo.foundation")
-    // useForPlugins = true                 // also use Reposilite to resolve Gradle plugins
-    // usePrivate = false                   // also read from /private, which needs a token
-    // privateRepository = "private"        // route name of the private repository
-    // privateUrl = uri("https://.../private")   // full URL, overrides url + privateRepository
-}
+plugins { id("net.snobo.artifact-stores") version "..." }
 ```
 
-The extension is created on `Settings`, so `reposilite { }` belongs in `settings.gradle.kts`, not in a
-project build script.
+Replace `"..."` with a published version. The plugin is a settings plugin, so the `plugins` block and the
+configuration belong in `settings.gradle.kts`.
 
-## Options
+## Quick starts
 
-| Option | Default | Meaning |
-| --- | --- | --- |
-| `url` | `reposiliteUrl` property, else `http://127.0.0.1:8080` | base URL of the instance, without a route |
-| `releasesUrl` | `url` + `releasesRepository` | full URL of the releases route, overrides `url` |
-| `snapshotsUrl` | `url` + `snapshotsRepository` | full URL of the snapshots route, overrides `url` |
-| `privateUrl` | `url` + `privateRepository` | full URL of the private route, overrides `url` |
-| `releasesRepository` | `releases` | route name of the releases repository |
-| `snapshotsRepository` | `snapshots` | route name of the snapshots repository |
-| `privateRepository` | `private` | route name of the private repository |
-| `repositoryName` | `Reposilite` | prefix of the created Gradle repositories (`Reposilite-Releases`, ...) |
-| `publisher` | `reposilitePublisher` property | Reposilite access token name |
-| `token` | `reposiliteToken` property | Reposilite access token secret |
-| `includeGroups` | `net.snobo` | groups resolved from Reposilite |
-| `useForDependencies` | `true` | register Reposilite as a dependency repository |
-| `useForPlugins` | `true` | register Reposilite as a plugin repository (also resolves this plugin itself) |
-| `usePrivate` | `false` | also read from the private route |
-| `allowInsecure` | `true` | when `false`, a plain HTTP URL fails the build |
-| `repositoriesMode` | not set | overrides `dependencyResolutionManagement.repositoriesMode` |
-
-Only the configured `includeGroups` are requested from Reposilite, so other dependencies never contact it.
-The private route follows the same rule and is only registered when `usePrivate = true`.
-Repositories are created for both `dependencyResolutionManagement.repositories` and
-`pluginManagement.repositories` unless the matching `useFor*` flag is disabled.
-
-The plugin warns when a project declares its own repositories, because Gradle then ignores the settings level
-repositories (`repositoriesMode = PREFER_PROJECT`). Move those repositories to settings, or set
-`reposilite { repositoriesMode = RepositoriesMode.FAIL_ON_PROJECT_REPOS }`.
-
-## Booting the plugin
-
-The settings plugin cannot add the repository it is loaded from, so `pluginManagement` needs one manual
-entry. This is also how a consumer resolves this plugin from Reposilite:
+### Reposilite
 
 ```kotlin
 // settings.gradle.kts
-pluginManagement {
-    repositories {
-        maven {
-            name = "Reposilite"
-            val base = providers.gradleProperty("reposiliteUrl").getOrElse("http://127.0.0.1:8080")
-            url = uri("$base/releases")
-            isAllowInsecureProtocol = base.startsWith("http://")
-            val username = providers.gradleProperty("reposilitePublisher").orNull
-            val secret = providers.gradleProperty("reposiliteToken").orNull
-            if (username != null && secret != null) {
-                credentials {
-                    this.username = username
-                    password = secret
-                }
-            }
-        }
-        google()
-        mavenCentral()
-        gradlePluginPortal()
+plugins { id("net.snobo.artifact-stores") version "..." }
+
+artifactStores {
+    reposilite("oss") {
+        includeGroups.add("com.example")
     }
 }
-
-plugins { id("net.snobo.resolution") version "0.1.1" }
 ```
 
-Use `$base/snapshots` instead of `$base/releases` to resolve a `-SNAPSHOT` version of this plugin. Consumers
-that resolve the plugin from Reposilite should run `--refresh-dependencies` after a new snapshot is
-published, because Gradle caches `-SNAPSHOT` modules for 24 hours.
+The preset points at `http://127.0.0.1:8080` by default and registers
+`http://127.0.0.1:8080/releases` and `http://127.0.0.1:8080/snapshots`. Set `url` for another instance:
 
-## Properties
+```kotlin
+reposilite("oss") {
+    url = uri("https://repo.example.com")
+    includeGroups.add("com.example")
+    includeGroups.add("com.example.plugins")
+}
+```
 
-| Gradle property | Environment variable | Meaning |
-| --- | --- | --- |
-| `reposiliteUrl` | `REPOSILITE_URL` | base URL, default `http://127.0.0.1:8080` |
-| `reposilitePublisher` | `REPOSILITE_PUBLISHER` | access token name (`reposiliteUsername` / `REPOSILITE_USERNAME` also accepted) |
-| `reposiliteToken` | `REPOSILITE_TOKEN` | access token secret |
+Reposilite uses basic authentication with an access token name and secret. The preset routes are `releases`
+and `snapshots`. Set `releasesRepository` and `snapshotsRepository` to use other route segments; the plugin
+appends them to `url` when it builds the repository URLs.
 
-Precedence: `-P` / project property, then `~/.gradle/gradle.properties`, then the environment variable.
-Every one of them can also be set through the extension itself (`url`, `publisher`, `token`).
+### Nexus
 
-Without credentials the public routes stay readable and an authorized route fails with `401`. The only
-protected route this plugin knows is the private route, which it registers only with `usePrivate = true`; it
-warns when that route is registered without credentials.
+```kotlin
+artifactStores {
+    nexus("corp") {
+        url = uri("https://nexus.example.com")
+        includeGroups.add("com.example")
+    }
+}
+```
 
-## Release
+A Nexus base URL is optional. When you set `url`, the preset appends `repository/maven-releases` and
+`repository/maven-snapshots`, so the example uses
+`https://nexus.example.com/repository/maven-releases` and
+`https://nexus.example.com/repository/maven-snapshots`. With full `releasesUrl` and `snapshotsUrl` values and
+no `url`, the plugin registers those URLs as they are. Nexus uses basic authentication.
 
-The version is never hard coded in `build.gradle.kts`; a release passes it on the command line.
-`-Pversion=...` is the native Gradle form, and `-Pproject.version=...` is accepted as well, because that
-spelling alone does not map onto `Project.version`. Without a version the build is a local build:
+### Artifactory
+
+```kotlin
+artifactStores {
+    artifactory("mirror") {
+        url = uri("https://artifactory.example.com")
+        includeGroups.add("com.example")
+    }
+}
+```
+
+An Artifactory base URL is optional. When you set `url`, the preset appends `artifactory/libs-release` and
+`artifactory/libs-snapshot`. With full `releasesUrl` and `snapshotsUrl` values and no `url`, the plugin
+registers those URLs as they are. Artifactory uses basic authentication. If your repository keys differ,
+override `releasesRepository` and `snapshotsRepository`; the plugin appends the overridden route to `url`.
+
+### Generic
+
+A generic store has no route defaults. Give it the full URL of the repository:
+
+```kotlin
+artifactStores {
+    generic("central") {
+        releasesUrl = uri("https://repo1.maven.org/maven2")
+        includeGroups.add("com.example")
+    }
+}
+```
+
+A generic store defaults to no authentication and registers a single repository, because `snapshotsUrl`
+falls back to `releasesUrl`. It also works with only `url`, which the plugin then registers as the single
+repository. Set `snapshotsUrl` to register a second repository for snapshots. Header
+authentication is available when the server expects an HTTP header instead of basic credentials:
+
+```kotlin
+import net.snobo.artifactstores.AuthType
+
+artifactStores {
+    generic("mirror") {
+        releasesUrl = uri("https://mirror.example.com/maven2")
+        auth.set(AuthType.HEADER)
+        // headerName and headerValue come from artifactStore.mirror.headerName and
+        // artifactStore.mirror.headerValue, or the matching environment variables.
+    }
+}
+```
+
+## Multi-store example
+
+Stores are tried in declaration order. Use `includeGroups` to keep each store responsible for its own groups.
+
+```kotlin
+import org.gradle.api.initialization.resolve.RepositoriesMode
+
+// settings.gradle.kts
+plugins { id("net.snobo.artifact-stores") version "..." }
+
+artifactStores {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    refreshChangingModules.set(true)
+
+    reposilite("internal") {
+        url = uri("https://repo.example.com")
+        includeGroups.add("com.example")
+    }
+    nexus("partner") {
+        url = uri("https://nexus.partner.example.com")
+        includeGroups.add("com.partner")
+    }
+    generic("central") {
+        releasesUrl = uri("https://repo1.maven.org/maven2")
+        includeGroups.add("org.apache")
+    }
+}
+```
+
+`repositoriesMode` overrides `dependencyResolutionManagement.repositoriesMode`. When projects declare their
+own repositories and the mode is `PREFER_PROJECT`, Gradle ignores the settings repositories; the plugin logs a
+warning that names those projects. `FAIL_ON_PROJECT_REPOS` turns that situation into a build failure.
+
+`refreshChangingModules = true` stops Gradle from honoring the changing-module cache: every configuration of
+every project gets `cacheChangingModulesFor(0, "seconds")`. Gradle has no per-repository cache policy, so the
+switch is build-wide and also affects dependencies that do not come from an artifact store.
+
+## `ArtifactStore` reference
+
+Every preset function returns an `ArtifactStore` and accepts a configuration block. All properties are Gradle
+`Property`/`ListProperty` values, so use `set(...)`, `add(...)` or Kotlin DSL assignment as usual.
+
+| Property | Type | Default | Description |
+| --- | --- | --- | --- |
+| `type` | `ArtifactStoreType` | set by the preset | Store kind: `REPOSILITE`, `NEXUS`, `ARTIFACTORY` or `GENERIC`. Normally not set by hand. |
+| `url` | `URI` | preset default URL, if any | Base URL of the store, without a route segment. Optional when full repository URLs are set. |
+| `releasesUrl` | `URI` | unset | Full URL of the releases repository. Overrides `url` plus `releasesRepository`. |
+| `snapshotsUrl` | `URI` | unset; generic falls back to `releasesUrl` | Full URL of the snapshots repository. Overrides `url` plus `snapshotsRepository`. |
+| `releasesRepository` | `String` | preset route | Route segment appended to `url` for releases. Also settable as `artifactStore.<name>.releasesRepository` or `ARTIFACT_STORE_<NAME>_RELEASES_REPOSITORY`. |
+| `snapshotsRepository` | `String` | preset route | Route segment appended to `url` for snapshots. Also settable as `artifactStore.<name>.snapshotsRepository` or `ARTIFACT_STORE_<NAME>_SNAPSHOTS_REPOSITORY`. |
+| `repositoryName` | `String` | the instance name | Prefix of the created Gradle repositories. |
+| `username` | `String` | `artifactStore.<name>.username` or `ARTIFACT_STORE_<NAME>_USERNAME` | User name for basic authentication. |
+| `password` | `String` | `artifactStore.<name>.password` or `ARTIFACT_STORE_<NAME>_PASSWORD` | Password or token secret for basic authentication. Never logged. |
+| `auth` | `AuthType` | preset authentication mode | `BASIC`, `HEADER` or `NONE`. |
+| `headerName` | `String` | `artifactStore.<name>.headerName` or `ARTIFACT_STORE_<NAME>_HEADER_NAME` | HTTP header name for header authentication. |
+| `headerValue` | `String` | `artifactStore.<name>.headerValue` or `ARTIFACT_STORE_<NAME>_HEADER_VALUE` | HTTP header value for header authentication. Never logged. |
+| `includeGroups` | `List<String>` | empty (no content filter) | Groups served by the store. Each entry also includes its subgroups. When the list is empty, the repository accepts any group. |
+| `allowInsecure` | `Boolean` | `true` | Opt in to plain HTTP. When `false`, a resolved plain HTTP URL fails the build. |
+| `forDependencies` | `Boolean` | `true` | Register the store in `dependencyResolutionManagement.repositories`. |
+| `forPlugins` | `Boolean` | `true` | Register the store in `pluginManagement.repositories`. |
+
+The preset functions also accept a name without a configuration block, for example `reposilite("oss")`. A
+store with both `forDependencies` and `forPlugins` set to `false` registers no repository, logs a warning, and
+skips URL and credential validation.
+
+### Created repository names
+
+A store whose releases and snapshots URLs differ creates two Gradle repositories:
+`<repositoryName>-Releases` and `<repositoryName>-Snapshots`. A store whose two URLs are identical creates one
+repository named `<repositoryName>`. `repositoryName` defaults to the instance name. Repository names must be
+unique within each repository handler. Two stores may share a name when one is dependency-only and the other
+is plugin-only, because they register in different handlers. A collision within
+`dependencyResolutionManagement.repositories` or `pluginManagement.repositories` fails the build and asks for
+a different `repositoryName`.
+
+## Extension reference
+
+| Property | Type | Default | Description |
+| --- | --- | --- | --- |
+| `repositoriesMode` | `RepositoriesMode` | unset | Overrides `dependencyResolutionManagement.repositoriesMode`. |
+| `refreshChangingModules` | `Boolean` | `false` | Refresh changing modules on every build by setting `cacheChangingModulesFor(0, "seconds")` on every configuration of every project. Build-wide. |
+
+## Presets
+
+| Preset | Default base URL | Release route | Snapshot route | Default auth | `url` required | Snapshots share releases |
+| --- | --- | --- | --- | --- | --- | --- |
+| `reposilite("...")` | `http://127.0.0.1:8080` | `releases` | `snapshots` | `BASIC` | no | no |
+| `nexus("...")` | none | `repository/maven-releases` | `repository/maven-snapshots` | `BASIC` | no, but `url` or both full URLs | no |
+| `artifactory("...")` | none | `artifactory/libs-release` | `artifactory/libs-snapshot` | `BASIC` | no, but `url` or both full URLs | no |
+| `generic("...")` | none | none; `url` is used as is | none; falls back to releases | `NONE` | no, but `url` or `releasesUrl` | yes |
+
+Pass the base URL of the server to `url`; the preset appends its own routes. The `releasesRepository` and
+`snapshotsRepository` values replace those preset routes. When you set `releasesUrl` and `snapshotsUrl`
+instead, the full URLs are used without a base URL, for every preset. A store with neither `url` nor
+`releasesUrl` fails with a message that names the store and the `url`, `releasesUrl` and `releasesRepository`
+sources it looked for.
+
+## Credentials
+
+Credentials and URLs can come from the DSL, from Gradle properties or from environment variables.
+
+| Source | Form |
+| --- | --- |
+| Gradle property | `artifactStore.<name>.<field>` |
+| Environment variable | `ARTIFACT_STORE_<NAME>_<FIELD>` |
+
+`<name>` is the name given to the preset, for example `oss` in `reposilite("oss")`. Environment variable names
+are normalized: the store name is upper-cased and every character outside `A-Z` and `0-9` becomes `_`. For
+example the store `internal-snapshots` uses `ARTIFACT_STORE_INTERNAL_SNAPSHOTS_USERNAME`. Two store names that
+normalize to the same prefix, such as `a-b` and `a_b`, are rejected.
+
+The available fields are `url`, `releasesUrl`, `snapshotsUrl`, `releasesRepository`, `snapshotsRepository`,
+`username`, `password`, `headerName` and `headerValue`. Their Gradle property and environment variable
+spellings follow the same pattern:
+
+```properties
+# ~/.gradle/gradle.properties, or a file that is not committed
+artifactStore.oss.username=token-name
+artifactStore.oss.password=token-secret
+artifactStore.oss.url=https://repo.example.com
+```
 
 ```bash
-./gradlew -q properties | grep ^version:                           # version: local-SNAPSHOT
-./gradlew -Pversion=0.1.1 -q properties | grep ^version:           # version: 0.1.1
+export ARTIFACT_STORE_OSS_USERNAME=token-name
+export ARTIFACT_STORE_OSS_PASSWORD=token-secret
 ```
 
-```bash
-./gradlew build                                # check the tree
-./gradlew -Pversion=0.1.1 publish              # -> /releases, or /snapshots for a -SNAPSHOT version
-git tag release/0.1.1 && git push origin release/0.1.1
+Precedence, from highest to lowest:
+
+1. A value assigned in the store's DSL block.
+2. The Gradle property `artifactStore.<name>.<field>` (`-P`, `gradle.properties`, or another Gradle property
+   source).
+3. The environment variable `ARTIFACT_STORE_<NAME>_<FIELD>`.
+4. The preset default (for example the Reposilite base URL).
+
+Basic authentication counts as configured only when both `username` and `password` are present. One value
+without the other fails the build. With neither, the plugin logs a warning and registers the repository without
+credentials, so public reads may work and protected reads fail with `401`. For header authentication the same
+rules apply to `headerName` and `headerValue`.
+
+### CI example
+
+```yaml
+- name: Build
+  run: ./gradlew build
+  env:
+    ARTIFACT_STORE_INTERNAL_USERNAME: ${{ secrets.ARTIFACT_STORE_USERNAME }}
+    ARTIFACT_STORE_INTERNAL_PASSWORD: ${{ secrets.ARTIFACT_STORE_PASSWORD }}
 ```
 
-Release tags always follow `release/X.Y.Z` (or `release/X.Y.Z-RCn`), the pattern the `net.snobo.version` plugin
-reads, so a later adoption of that plugin needs no retagging.
+## Security notes
 
-Later releases take their version from the `net.snobo.version` plugin instead (see `TODO.md`).
+* `allowInsecure` defaults to `true`. The plugin warns about every plain HTTP URL except `127.0.0.1`. Set
+  `allowInsecure = false` to reject plain HTTP; the build then fails with the store name and the offending URL.
+* HTTP sends credentials unencrypted. Use HTTPS for anything except a local store.
+* `includeGroups` limits which groups a store is asked for, and with them which requests carry its
+  credentials. An empty list means no filter: the repository is used for every group that reaches it. Set it
+  for stores that should only serve their own artifacts.
+* A protected store needs credentials for metadata and artifact reads alike. Without them Gradle receives
+  `401` responses, and the plugin logs a warning when basic or header authentication has no values.
+* Keep credentials in `~/.gradle/gradle.properties` or CI secrets, not in a committed file.
+* Credentials are not logged. Messages refer to the property and environment variable names, not their values.
+
+## How repositories are registered
+
+The plugin is a `Settings` plugin. It reads the configuration in `settingsEvaluated`, creates the repositories,
+and adds them to both the settings dependency repositories and the plugin-management repositories. This happens
+before Gradle configures any project, so project dependencies and project plugins both resolve through the
+stores. It also means the `artifactStores` block belongs in `settings.gradle.kts`. The plugin is compatible with
+Gradle's configuration cache.
 
 ## Development
 
 ```bash
-./gradlew build                                        # compile, validatePlugins, TestKit tests (Gradle 9.7.1)
-REPOSILITE_TEST_GRADLE_VERSION=8.14.3 ./gradlew test --rerun   # same suite against Gradle 8.14.3
+./gradlew build                              # compile, ktlint, plugin validation and the TestKit suite
+./gradlew check                              # the verification tasks alone
+./gradlew publishToMavenLocal                # publish the plugin to the local Maven repository
+ARTIFACT_STORE_TEST_GRADLE_VERSION=8.14.7 ./gradlew test
+ARTIFACT_STORE_TEST_GRADLE_VERSION=9.9.1 ./gradlew test
 ```
 
-The functional tests start a local HTTP stub that imitates the Reposilite endpoints (artifact GET for the
-`releases`, `snapshots` and `private` routes, with basic authentication), so the tests need no server. The
-build itself does: it resolves the plugin that publishes it from Reposilite. With a warm cache,
-`./gradlew build --offline` works while the server is down.
+`check` runs the functional tests through Gradle TestKit. The Gradle version of the outer build is used unless
+`ARTIFACT_STORE_TEST_GRADLE_VERSION` names another release. CI runs the suite on Gradle 8.14.7 and 9.9.1. The
+functional tests start an in-process HTTP stub, so no artifact server is needed.
 
-### Self dog-fooding
+The published plugin jar is self-contained: the `artifact-store-support` classes are shaded into it, and the
+POM does not declare that support project as a dependency.
 
-`0.1.0` was published with a hand written `maven-publish` block, because no version of the plugin existed
-while that build was configured. From `0.1.1` on this build publishes itself through `net.snobo.publish`
-`0.1.0`: `checkReposilitePublishTarget` runs before the first upload, `-SNAPSHOT` goes to `/snapshots` and
-everything else to `/releases`.
+## License
 
-This plugin cannot be applied to this build before `0.1.2`. A settings plugin needs a published version whose
-package matches the working tree, and `0.1.0` still carries the pre-split package
-`net.snobo.gradle.plugin`; the manual `pluginManagement` entry in `settings.gradle.kts` is what resolves the
-publish plugin, and it stays anyway, because a settings plugin cannot add the repository it is loaded from.
-
-```
-./gradlew -Pversion=0.1.1 publish                 # release, default base URL
-./gradlew -Pversion=0.1.1-SNAPSHOT publish        # snapshot    -> /snapshots
-./gradlew -Pversion=0.1.1 -PreposiliteUrl=https://repo.example.com publish
-```
-
-Run `publish` on purpose and nowhere else: it writes to the Reposilite instance named by `reposiliteUrl`.
+Apache License 2.0. See [LICENSE](LICENSE) for the full text and [NOTICE](NOTICE) for the copyright notice.
