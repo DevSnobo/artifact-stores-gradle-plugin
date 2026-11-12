@@ -1,24 +1,29 @@
-package net.snobo.resolution
+package net.snobo.artifactstores.support
 
 import com.sun.net.httpserver.HttpExchange
 import com.sun.net.httpserver.HttpServer
 import java.net.InetSocketAddress
 import java.security.MessageDigest
-import java.util.Base64
+import java.util.Locale
 import java.util.concurrent.CopyOnWriteArrayList
 
-/** Minimal Reposilite stand-in: records requests and serves artifacts the settings plugin resolves. */
-internal class ReposiliteStub(
-    private val tokenName: String = "net-snobo-publisher",
-    private val tokenSecret: String = "stub-secret",
-    /** Routes that hand out artifacts. Other routes answer 404, like an empty repository. */
-    private val artifactRoutes: Set<String> = setOf("releases", "snapshots", "private"),
+/**
+ * Minimal Maven repository stand-in: records requests and serves artifacts the settings plugin resolves.
+ *
+ * [artifactRoutes] are the route prefixes that hand out artifacts, so a fixture can imitate a preset layout:
+ * `releases`/`snapshots` for reposilite, `repository` for nexus, `artifactory` for artifactory, and any route
+ * for generic stores. Other routes answer 404, like an empty repository.
+ */
+class ReposiliteStub(
+    private val artifactRoutes: Set<String> = setOf("releases", "snapshots"),
 ) {
     data class Recorded(
         val method: String,
         val path: String,
-        val authorization: String?,
-    )
+        val headers: Map<String, String>,
+    ) {
+        val authorization: String? get() = headers["authorization"]
+    }
 
     private val server: HttpServer = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
     val requests: MutableList<Recorded> = CopyOnWriteArrayList()
@@ -36,8 +41,11 @@ internal class ReposiliteStub(
 
     private fun handle(exchange: HttpExchange) {
         val path = exchange.requestURI.path
-        val authorization = exchange.requestHeaders.getFirst("Authorization")
-        requests.add(Recorded(exchange.requestMethod, path, authorization))
+        val headers =
+            exchange.requestHeaders.entries.associate { (name, values) ->
+                name.lowercase(Locale.ROOT) to values.first()
+            }
+        requests.add(Recorded(exchange.requestMethod, path, headers))
 
         when {
             path.endsWith("/maven-metadata.xml") -> {
@@ -84,7 +92,7 @@ internal class ReposiliteStub(
         }
     }
 
-    /** whether the route in front of an artifact path hands out artifacts, for example `private`. */
+    /** Whether the route in front of an artifact path hands out artifacts, for example `repository`. */
     private fun servesArtifacts(path: String): Boolean = path.trim('/').substringBefore('/') in artifactRoutes
 
     private fun notFound(exchange: HttpExchange) =
