@@ -6,27 +6,46 @@ on:
   pull_request:
   workflow_call:
 
-permissions:
-  contents: read
-  id-token: write
+permissions: {}
+
+concurrency:
+  # One run per ref. A new PR push cancels the old run; a main push does not cancel a release run.
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   verify:
+    name: Verify (JDK 21)
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      # OIDC token for the Tailscale join. No repository write access.
+      id-token: write
     steps:
-      - uses: actions/checkout@v7.0.1
-      - uses: actions/setup-java@v6.2.0
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+        with:
+          # Do not leave the token in .git/config for Gradle and tests to find.
+          persist-credentials: false
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v6.2.0
         with:
           distribution: temurin
           java-version: "21"
+
       - name: Join the tailnet
+        if: vars.TS_CI_CLIENT_ID != ''
         uses: tailscale/github-action@v4.4.0
         with:
           oauth-client-id: ${{ vars.TS_CI_CLIENT_ID }}
           audience: ${{ vars.TS_CI_AUDIENCE }}
           tags: tag:ci
           ping: ${{ vars.VPS_TAILNET_HOST }}
-      - uses: gradle/actions/setup-gradle@v6.4.1
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6.4.1
         with:
           # MIT provider over actions/cache: no commercial cache service and no billing surprise.
           cache-provider: basic
@@ -36,6 +55,7 @@ jobs:
           cache-encryption-key: ${{ secrets.GRADLE_CACHE_ENCRYPTION_KEY }}
           # The wrapper JAR is checked against the published checksums before Gradle runs.
           validate-wrappers: true
+
       - name: Verify
         env:
           ORG_GRADLE_PROJECT_reposiliteUrl: ${{ vars.REPOSILITE_URL }}
@@ -46,33 +66,43 @@ jobs:
   test-gradle-version:
     name: TestKit on Gradle ${{ matrix.gradle }}
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
     strategy:
       fail-fast: false
       matrix:
         gradle: ["8.14.7", "9.9.1"]
     steps:
-      - uses: actions/checkout@v7.0.1
-      - uses: actions/setup-java@v6.2.0
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v6.2.0
         with:
           distribution: temurin
           java-version: "21"
+
       - name: Join the tailnet
+        if: vars.TS_CI_CLIENT_ID != ''
         uses: tailscale/github-action@v4.4.0
         with:
           oauth-client-id: ${{ vars.TS_CI_CLIENT_ID }}
           audience: ${{ vars.TS_CI_AUDIENCE }}
           tags: tag:ci
           ping: ${{ vars.VPS_TAILNET_HOST }}
-      - uses: gradle/actions/setup-gradle@v6.4.1
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6.4.1
         with:
-          # MIT provider over actions/cache: no commercial cache service and no billing surprise.
           cache-provider: basic
-          # Branches restore; only the default branch writes. Release tags stay read-only.
           cache-read-only: ${{ github.event.repository != null && github.ref_name != github.event.repository.default_branch }}
-          # Required before setup-gradle stores configuration-cache data.
           cache-encryption-key: ${{ secrets.GRADLE_CACHE_ENCRYPTION_KEY }}
-          # The wrapper JAR is checked against the published checksums before Gradle runs.
           validate-wrappers: true
+
       - name: Run the TestKit suite
         env:
           ARTIFACT_STORE_TEST_GRADLE_VERSION: ${{ matrix.gradle }}
