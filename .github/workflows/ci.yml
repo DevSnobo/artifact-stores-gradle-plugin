@@ -54,7 +54,8 @@ jobs:
           grep -q "Reusing configuration cache." <<<"$output"
 
       - name: Verify
-        run: ./gradlew check
+        # Gradle deprecations fail now, not after the next major upgrade.
+        run: ./gradlew check --warning-mode=fail
 
       - name: Check lockfiles are current
         run: |
