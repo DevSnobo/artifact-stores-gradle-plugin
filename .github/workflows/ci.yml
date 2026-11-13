@@ -56,6 +56,11 @@ jobs:
       - name: Verify
         run: ./gradlew check
 
+      - name: Check lockfiles are current
+        run: |
+          ./gradlew resolveAndLockAll --write-locks
+          git diff --exit-code -- '**/gradle.lockfile' 'gradle.lockfile'
+
   test-gradle-version:
     name: TestKit on Gradle ${{ matrix.gradle }} / JDK ${{ matrix.java }}
     runs-on: ubuntu-latest
