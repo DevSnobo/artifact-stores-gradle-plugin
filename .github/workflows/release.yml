@@ -4,51 +4,113 @@ on:
   push:
     tags: ["release/**"]
 
-permissions:
-  contents: read
-  id-token: write
+permissions: {}
+
+concurrency:
+  # One release per tag. Never cancel a publish in progress.
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   verify:
     uses: ./.github/workflows/ci.yml
-    secrets: inherit
+    permissions:
+      contents: read
+    secrets:
+      GRADLE_CACHE_ENCRYPTION_KEY: ${{ secrets.GRADLE_CACHE_ENCRYPTION_KEY }}
 
   publish:
+    name: Publish ${{ github.ref_name }}
     needs: verify
     runs-on: ubuntu-latest
-    environment: release
+    timeout-minutes: 30
+    environment:
+      name: release
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+      artifact-metadata: write
     steps:
-      - uses: actions/checkout@v7.0.1
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          # Full history and tags: the ancestry check needs them.
           fetch-depth: 0
+          # Exception to the no-persisted-credentials rule: the private repository needs the
+          # token for `git fetch` below. This job runs only on a release tag, inside the
+          # release environment.
+          persist-credentials: true
+
       - name: Require the tag on main
         run: |
           git fetch --no-tags origin main
-          git merge-base --is-ancestor "$GITHUB_SHA" FETCH_HEAD
-      - uses: actions/setup-java@v6.2.0
+          tag_commit=$(git rev-parse "${GITHUB_SHA}^{commit}")
+          if ! git merge-base --is-ancestor "$tag_commit" FETCH_HEAD; then
+            echo "::error::Tag $GITHUB_REF_NAME is not on origin/main"
+            exit 1
+          fi
+
+      - name: Verify the signed tag
+        # Enabled only after the maintainer commits public keys under .github/keys and sets
+        # vars.REQUIRE_SIGNED_TAGS=true. An unsigned tag then fails before anything is published.
+        if: vars.REQUIRE_SIGNED_TAGS == 'true'
+        run: |
+          gpg --batch --import .github/keys/*.asc
+          git fetch --no-tags origin "refs/tags/${GITHUB_REF_NAME}:refs/tags/${GITHUB_REF_NAME}"
+          git verify-tag --raw "$GITHUB_REF_NAME"
+
+      - name: Resolve the release version
+        id: release
+        run: |
+          version="${GITHUB_REF_NAME#release/}"
+          if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-RC[0-9]+)?$ ]]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not carry a release version"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
         with:
           distribution: temurin
           java-version: "21"
+
       - name: Join the tailnet
-        uses: tailscale/github-action@v4.4.0
+        if: vars.TS_CI_CLIENT_ID != ''
+        uses: tailscale/github-action@064b10558093f38325e838ddea35486bdc6b1d5c # v4.4.0
         with:
           oauth-client-id: ${{ vars.TS_CI_CLIENT_ID }}
           audience: ${{ vars.TS_CI_AUDIENCE }}
           tags: tag:ci
           ping: ${{ vars.VPS_TAILNET_HOST }}
-      - uses: gradle/actions/setup-gradle@v6.4.1
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+        with:
+          # This job publishes runtime artifacts. zizmor treats any Gradle cache here as a
+          # poisoning path, so the publish build resolves everything without a cache.
+          cache-disabled: true
+          # The wrapper JAR is checked against the published checksums before Gradle runs.
+          validate-wrappers: true
+
       - name: Check the release version
-        env:
-          ORG_GRADLE_PROJECT_reposiliteUrl: ${{ vars.REPOSILITE_URL }}
-          ORG_GRADLE_PROJECT_reposilitePublisher: ci-read
-          ORG_GRADLE_PROJECT_reposiliteToken: ${{ secrets.REPOSILITE_CI_READ_TOKEN }}
-        run: ./gradlew check -Pversion.requireRelease=true
+        run: ./gradlew check -Pversion=${{ steps.release.outputs.version }}
+
       - name: Publish the release
         env:
           ORG_GRADLE_PROJECT_reposiliteUrl: ${{ vars.REPOSILITE_URL }}
           ORG_GRADLE_PROJECT_reposilitePublisher: release-publish
           ORG_GRADLE_PROJECT_reposiliteToken: ${{ secrets.REPOSILITE_RELEASE_TOKEN }}
-        run: ./gradlew publish
+        run: ./gradlew publish -Pversion=${{ steps.release.outputs.version }}
+
+      - name: Attest the published jars
+        # GitHub attestations are available on public repositories (and Enterprise Cloud for private ones).
+        if: github.event.repository.private == false
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: "**/build/libs/*.jar"
+
       - name: Publish to the Gradle Plugin Portal
         if: vars.PORTAL_PUBLISH == 'true'
         env:
@@ -57,4 +119,4 @@ jobs:
           ORG_GRADLE_PROJECT_reposiliteToken: ${{ secrets.REPOSILITE_CI_READ_TOKEN }}
           GRADLE_PUBLISH_KEY: ${{ secrets.GRADLE_PUBLISH_KEY }}
           GRADLE_PUBLISH_SECRET: ${{ secrets.GRADLE_PUBLISH_SECRET }}
-        run: ./gradlew publishPlugins
+        run: ./gradlew publishPlugins -Pversion=${{ steps.release.outputs.version }}

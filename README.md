@@ -294,6 +294,16 @@ before Gradle configures any project, so project dependencies and project plugin
 stores. It also means the `artifactStores` block belongs in `settings.gradle.kts`. The plugin is compatible with
 Gradle's configuration cache.
 
+## Releasing
+
+Release tags use the form `release/X.Y.Z`. The release workflow requires the tag to be an ancestor of
+`origin/main`, derives the version from the tag, publishes to Reposilite when `reposiliteUrl` and the
+publish token are set, and attests the jars when the repository is public.
+
+To require signed tags, commit the maintainer's public key under `.github/keys/*.asc` and set the
+repository variable `REQUIRE_SIGNED_TAGS` to `true`. The release job then fails on an unsigned tag
+before it publishes anything.
+
 ## Development
 
 ```bash
@@ -307,6 +317,21 @@ ARTIFACT_STORE_TEST_GRADLE_VERSION=9.9.1 ./gradlew test
 `check` runs the functional tests through Gradle TestKit. The Gradle version of the outer build is used unless
 `ARTIFACT_STORE_TEST_GRADLE_VERSION` names another release. CI runs the suite on Gradle 8.14.7 and 9.9.1. The
 functional tests start an in-process HTTP stub, so no artifact server is needed.
+
+A clean clone needs only public repositories: the build has no private plugin dependency. Every build that is
+not passed `-Pversion=<release>` is `local-SNAPSHOT`. The release workflow derives the version from the
+`release/X.Y.Z` tag and publishes only when `reposiliteUrl` and the publish token are set.
+
+Dependency versions are locked in `gradle.lockfile` and `artifact-store-support/gradle.lockfile`, and
+their bytes are verified against `gradle/verification-metadata.xml`. After changing a dependency or a
+build plugin, refresh both controls and commit them with the change:
+
+```bash
+./gradlew resolveAndLockAll --write-locks --write-verification-metadata sha256
+```
+
+The verification file covers the buildscript and plugin classpaths plus every resolvable project
+configuration, including the TestKit fixtures and ktlint.
 
 The published plugin jar is self-contained: the `artifact-store-support` classes are shaded into it, and the
 POM does not declare that support project as a dependency.

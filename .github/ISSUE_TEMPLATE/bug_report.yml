@@ -1,0 +1,40 @@
+name: Bug report
+description: Report a defect in the artifact-stores plugin.
+title: "[bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: "Do not report security problems here. Use the private reporting link in SECURITY.md."
+  - type: input
+    id: version
+    attributes:
+      label: Plugin version
+      placeholder: "0.3.0"
+    validations:
+      required: true
+  - type: input
+    id: gradle
+    attributes:
+      label: Gradle and JDK versions
+      placeholder: "Gradle 9.9.1, JDK 21"
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: "A minimal settings.gradle.kts and the command that fails."
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected and actual behaviour
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant output
+      render: text
