@@ -9,19 +9,19 @@ import java.util.Properties
 plugins {
     kotlin("jvm") version "2.4.20"
     `java-gradle-plugin`
+    `maven-publish`
     // The shared net.snobo style: `ktlintCheck` runs inside `check` and `ktlintFormat` rewrites the sources.
     id("org.jlleitschuh.gradle.ktlint") version "14.2.0"
     // Shades the support subproject into the plugin jar, so the published plugin stays self-contained.
     id("com.gradleup.shadow") version "9.6.1"
-    // Publishes the plugin jar to the project's Maven repository.
-    id("net.snobo.publish") version "0.1.3"
-    // The version comes from the release tag at HEAD; every other commit is local-SNAPSHOT.
-    id("net.snobo.version") version "1.0.0"
     // Publishes the plugin to the Gradle Plugin Portal. Only the release workflow runs the upload.
     id("com.gradle.plugin-publish") version "2.2.1"
 }
 
 group = "net.snobo"
+
+// The release workflow passes the version from the release tag. Every other build is a local snapshot.
+version = providers.gradleProperty("version").orElse("local-SNAPSHOT").get()
 
 allprojects {
     // Gradle 9 made these the defaults; Gradle 8.14 still needs the explicit block, and the
@@ -163,6 +163,30 @@ tasks.withType<Jar>().matching { it.name == "sourcesJar" }.configureEach {
 tasks.withType<GenerateModuleMetadata>().configureEach {
     if (name == "generateMetadataFileForPluginMavenPublication") {
         enabled = false
+    }
+}
+
+publishing {
+    // A clean clone has no reposiliteUrl, so it configures no remote repository and `check` needs
+    // no private infrastructure. The release workflow supplies the URL and the write token.
+    val baseUrl = providers.gradleProperty("reposiliteUrl").orNull
+    if (baseUrl != null) {
+        repositories {
+            maven {
+                name = "Reposilite"
+                val route = if (version.toString().endsWith("-SNAPSHOT")) "snapshots" else "releases"
+                url = uri("${baseUrl.trimEnd('/')}/$route")
+                isAllowInsecureProtocol = baseUrl.startsWith("http://")
+                val publisher = providers.gradleProperty("reposilitePublisher").orNull
+                val token = providers.gradleProperty("reposiliteToken").orNull
+                if (!publisher.isNullOrBlank() && !token.isNullOrBlank()) {
+                    credentials {
+                        username = publisher
+                        password = token
+                    }
+                }
+            }
+        }
     }
 }
 

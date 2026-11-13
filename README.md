@@ -308,6 +308,10 @@ ARTIFACT_STORE_TEST_GRADLE_VERSION=9.9.1 ./gradlew test
 `ARTIFACT_STORE_TEST_GRADLE_VERSION` names another release. CI runs the suite on Gradle 8.14.7 and 9.9.1. The
 functional tests start an in-process HTTP stub, so no artifact server is needed.
 
+A clean clone needs only public repositories: the build has no private plugin dependency. Every build that is
+not passed `-Pversion=<release>` is `local-SNAPSHOT`. The release workflow derives the version from the
+`release/X.Y.Z` tag and publishes only when `reposiliteUrl` and the publish token are set.
+
 The published plugin jar is self-contained: the `artifact-store-support` classes are shaded into it, and the
 POM does not declare that support project as a dependency.
 
