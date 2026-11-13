@@ -312,12 +312,16 @@ A clean clone needs only public repositories: the build has no private plugin de
 not passed `-Pversion=<release>` is `local-SNAPSHOT`. The release workflow derives the version from the
 `release/X.Y.Z` tag and publishes only when `reposiliteUrl` and the publish token are set.
 
-Dependency versions are locked in `gradle.lockfile` and `artifact-store-support/gradle.lockfile`. After
-changing a dependency, update both files and commit them with the change:
+Dependency versions are locked in `gradle.lockfile` and `artifact-store-support/gradle.lockfile`, and
+their bytes are verified against `gradle/verification-metadata.xml`. After changing a dependency or a
+build plugin, refresh both controls and commit them with the change:
 
 ```bash
-./gradlew resolveAndLockAll --write-locks
+./gradlew resolveAndLockAll --write-locks --write-verification-metadata sha256
 ```
+
+The verification file covers the buildscript and plugin classpaths plus every resolvable project
+configuration, including the TestKit fixtures and ktlint.
 
 The published plugin jar is self-contained: the `artifact-store-support` classes are shaded into it, and the
 POM does not declare that support project as a dependency.
