@@ -141,7 +141,8 @@ jobs:
     # Validation never uploads, so it does not depend on the PORTAL_PUBLISH switch.
     if: >-
       github.event_name == 'pull_request' &&
-      github.event.pull_request.head.repo.full_name == github.repository
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      vars.PORTAL_PUBLISH == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:

@@ -215,8 +215,23 @@ afterEvaluate {
     extensions.configure<PublishingExtension> {
         publications.named<MavenPublication>("pluginMaven") {
             // The support classes are bundled, so net.snobo:artifact-store-support must not appear in the POM.
+            // The logic is inline: a build-script function reference is not serializable by the configuration cache.
             pom.withXml {
-                removePomDependency(asNode(), "artifact-store-support")
+                val root = asNode()
+                root.children().filterIsInstance<Node>().forEach { container ->
+                    if (container.name().toString().substringAfterLast('}') != "dependencies") return@forEach
+                    container.children().filterIsInstance<Node>().forEach { dependency ->
+                        if (dependency.name().toString().substringAfterLast('}') != "dependency") return@forEach
+                        val bundled =
+                            dependency.children().filterIsInstance<Node>().any {
+                                it.name().toString().substringAfterLast('}') == "artifactId" &&
+                                    it.text() == "artifact-store-support"
+                            }
+                        if (bundled) {
+                            container.remove(dependency)
+                        }
+                    }
+                }
             }
             pom {
                 name.set("Artifact Stores Gradle Plugin")
@@ -244,23 +259,3 @@ afterEvaluate {
 ktlint {
     version.set("1.8.0")
 }
-
-private fun removePomDependency(
-    root: Node,
-    artifactId: String,
-) {
-    for (container in root.elements()) {
-        if (container.localName() != "dependencies") continue
-        for (dependency in container.elements()) {
-            if (dependency.localName() != "dependency") continue
-            val bundled = dependency.elements().any { it.localName() == "artifactId" && it.text() == artifactId }
-            if (bundled) {
-                container.remove(dependency)
-            }
-        }
-    }
-}
-
-private fun Node.elements(): List<Node> = children().filterIsInstance<Node>()
-
-private fun Node.localName(): String = name().toString().substringAfterLast('}')
