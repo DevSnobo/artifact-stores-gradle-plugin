@@ -29,6 +29,8 @@ jobs:
     permissions:
       contents: read
       id-token: write
+      attestations: write
+      artifact-metadata: write
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -48,6 +50,15 @@ jobs:
             echo "::error::Tag $GITHUB_REF_NAME is not on origin/main"
             exit 1
           fi
+
+      - name: Verify the signed tag
+        # Enabled only after the maintainer commits public keys under .github/keys and sets
+        # vars.REQUIRE_SIGNED_TAGS=true. An unsigned tag then fails before anything is published.
+        if: vars.REQUIRE_SIGNED_TAGS == 'true'
+        run: |
+          gpg --batch --import .github/keys/*.asc
+          git fetch --no-tags origin "refs/tags/${GITHUB_REF_NAME}:refs/tags/${GITHUB_REF_NAME}"
+          git verify-tag --raw "$GITHUB_REF_NAME"
 
       - name: Resolve the release version
         id: release
@@ -92,6 +103,13 @@ jobs:
           ORG_GRADLE_PROJECT_reposilitePublisher: release-publish
           ORG_GRADLE_PROJECT_reposiliteToken: ${{ secrets.REPOSILITE_RELEASE_TOKEN }}
         run: ./gradlew publish -Pversion=${{ steps.release.outputs.version }}
+
+      - name: Attest the published jars
+        # GitHub attestations are available on public repositories (and Enterprise Cloud for private ones).
+        if: github.event.repository.private == false
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: "**/build/libs/*.jar"
 
       - name: Publish to the Gradle Plugin Portal
         if: vars.PORTAL_PUBLISH == 'true'
