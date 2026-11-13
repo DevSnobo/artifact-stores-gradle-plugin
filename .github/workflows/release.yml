@@ -92,14 +92,14 @@ jobs:
           validate-wrappers: true
 
       - name: Check the release version
-        run: ./gradlew check -Pversion=${{ steps.release.outputs.version }}
+        run: ./gradlew check --no-build-cache -Pversion=${{ steps.release.outputs.version }}
 
       - name: Publish the release
         env:
           ORG_GRADLE_PROJECT_reposiliteUrl: ${{ vars.REPOSILITE_URL }}
           ORG_GRADLE_PROJECT_reposilitePublisher: release-publish
           ORG_GRADLE_PROJECT_reposiliteToken: ${{ secrets.REPOSILITE_RELEASE_TOKEN }}
-        run: ./gradlew publish -Pversion=${{ steps.release.outputs.version }}
+        run: ./gradlew publish --no-build-cache -Pversion=${{ steps.release.outputs.version }}
 
       - name: Attest the published jars
         if: github.event.repository.private == false
@@ -115,4 +115,4 @@ jobs:
           ORG_GRADLE_PROJECT_reposiliteToken: ${{ secrets.REPOSILITE_CI_READ_TOKEN }}
           GRADLE_PUBLISH_KEY: ${{ secrets.GRADLE_PUBLISH_KEY }}
           GRADLE_PUBLISH_SECRET: ${{ secrets.GRADLE_PUBLISH_SECRET }}
-        run: ./gradlew publishPlugins -Pversion=${{ steps.release.outputs.version }}
+        run: ./gradlew publishPlugins --no-build-cache -Pversion=${{ steps.release.outputs.version }}
