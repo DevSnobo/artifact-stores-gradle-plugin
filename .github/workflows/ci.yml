@@ -56,6 +56,14 @@ jobs:
           # The wrapper JAR is checked against the published checksums before Gradle runs.
           validate-wrappers: true
 
+      - name: Configuration cache reuse
+        run: |
+          set -euo pipefail
+          ./gradlew help --configuration-cache -Dorg.gradle.configuration-cache.problems=fail
+          output=$(./gradlew help --configuration-cache -Dorg.gradle.configuration-cache.problems=fail)
+          printf '%s\n' "$output"
+          grep -q "Reusing configuration cache." <<<"$output"
+
       - name: Verify
         env:
           ORG_GRADLE_PROJECT_reposiliteUrl: ${{ vars.REPOSILITE_URL }}
