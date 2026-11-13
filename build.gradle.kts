@@ -24,11 +24,32 @@ group = "net.snobo"
 version = providers.gradleProperty("version").orElse("local-SNAPSHOT").get()
 
 allprojects {
+    // Lock every resolvable configuration, including the TestKit fixtures. Plugin and buildscript
+    // classpaths are not covered by locking; dependency verification covers those artifacts.
+    dependencyLocking {
+        lockAllConfigurations()
+    }
     // Gradle 9 made these the defaults; Gradle 8.14 still needs the explicit block, and the
     // release and verification jobs must produce byte-identical archives.
     tasks.withType<AbstractArchiveTask>().configureEach {
         isPreserveFileTimestamps = false
         isReproducibleFileOrder = true
+    }
+}
+
+tasks.register("resolveAndLockAll") {
+    group = "verification"
+    description = "Resolves every resolvable configuration and writes dependency lock state."
+    notCompatibleWithConfigurationCache("Resolves configurations at execution time.")
+    doFirst {
+        require(gradle.startParameter.isWriteDependencyLocks) {
+            "Run this task with --write-locks."
+        }
+    }
+    doLast {
+        allprojects.forEach { target ->
+            target.configurations.filter { it.isCanBeResolved }.forEach { it.resolve() }
+        }
     }
 }
 
