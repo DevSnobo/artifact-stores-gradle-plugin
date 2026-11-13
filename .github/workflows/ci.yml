@@ -170,4 +170,5 @@ jobs:
         env:
           GRADLE_PUBLISH_KEY: ${{ secrets.GRADLE_PUBLISH_KEY }}
           GRADLE_PUBLISH_SECRET: ${{ secrets.GRADLE_PUBLISH_SECRET }}
-        run: ./gradlew publishPlugins --validate-only
+        # A fixed non-SNAPSHOT version: the Portal rejects SNAPSHOT metadata, and validation never uploads.
+        run: ./gradlew publishPlugins --validate-only -Pversion=0.0.0-validation
