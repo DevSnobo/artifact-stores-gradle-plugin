@@ -2,6 +2,7 @@ import groovy.util.Node
 import org.gradle.api.publish.PublishingExtension
 import org.gradle.api.publish.maven.MavenPublication
 import org.gradle.api.publish.tasks.GenerateModuleMetadata
+import org.gradle.api.tasks.bundling.AbstractArchiveTask
 import org.gradle.plugin.compatibility.compatibility
 import java.util.Properties
 
@@ -21,6 +22,15 @@ plugins {
 }
 
 group = "net.snobo"
+
+allprojects {
+    // Gradle 9 made these the defaults; Gradle 8.14 still needs the explicit block, and the
+    // release and verification jobs must produce byte-identical archives.
+    tasks.withType<AbstractArchiveTask>().configureEach {
+        isPreserveFileTimestamps = false
+        isReproducibleFileOrder = true
+    }
+}
 
 kotlin {
     jvmToolchain(21)
