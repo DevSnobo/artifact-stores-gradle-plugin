@@ -10,9 +10,7 @@ plugins {
     kotlin("jvm") version "2.4.20"
     `java-gradle-plugin`
     `maven-publish`
-    // The shared net.snobo style: `ktlintCheck` runs inside `check` and `ktlintFormat` rewrites the sources.
     id("org.jlleitschuh.gradle.ktlint") version "14.2.0"
-    // Shades the support subproject into the plugin jar, so the published plugin stays self-contained.
     id("com.gradleup.shadow") version "9.6.1"
     // Publishes the plugin to the Gradle Plugin Portal. Only the release workflow runs the upload.
     id("com.gradle.plugin-publish") version "2.2.1"
@@ -24,8 +22,6 @@ group = "net.snobo"
 version = providers.gradleProperty("version").orElse("local-SNAPSHOT").get()
 
 allprojects {
-    // Lock every resolvable configuration, including the TestKit fixtures. Plugin and buildscript
-    // classpaths are not covered by locking; dependency verification covers those artifacts.
     dependencyLocking {
         lockAllConfigurations()
     }
@@ -78,13 +74,10 @@ val shaded =
 
 dependencies {
     implementation(project(":artifact-store-support"))
-    // The shade takes the support classes only, not its transitive Kotlin stdlib or Gradle API.
     shaded(project(":artifact-store-support")) {
         isTransitive = false
     }
     testImplementation(kotlin("test"))
-    // The DSL tests use the support module's test fixtures. Depending on the fixtures configuration directly
-    // keeps the fixtures out of this project's publications.
     testImplementation(project(":artifact-store-support", "testFixturesRuntimeElements"))
 }
 
@@ -163,7 +156,6 @@ tasks.shadowJar {
     // shadowJar carries no classifier.
     archiveClassifier.set("")
     configurations = listOf(shaded)
-    // The support module and this project both contribute META-INF/*.kotlin_module; keep the first copy.
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
 
@@ -173,7 +165,6 @@ tasks.processResources {
 }
 
 tasks.withType<Jar>().matching { it.name == "sourcesJar" }.configureEach {
-    // The support classes are shaded into the plugin jar, so their sources belong in the published sources jar.
     from(project(":artifact-store-support").file("src/main/kotlin"))
     from(rootProject.file("LICENSE")) { into("META-INF") }
     from(rootProject.file("NOTICE")) { into("META-INF") }
@@ -214,8 +205,6 @@ publishing {
 afterEvaluate {
     extensions.configure<PublishingExtension> {
         publications.named<MavenPublication>("pluginMaven") {
-            // The support classes are bundled, so net.snobo:artifact-store-support must not appear in the POM.
-            // The logic is inline: a build-script function reference is not serializable by the configuration cache.
             pom.withXml {
                 val root = asNode()
                 root.children().filterIsInstance<Node>().forEach { container ->
@@ -254,8 +243,6 @@ afterEvaluate {
     }
 }
 
-// The engine is pinned, so every net.snobo repository formats with the same ktlint version; the rules come from
-// the shared .editorconfig at the repository root (ktlint_official, 120 columns, 4 space indent, trailing commas).
 ktlint {
     version.set("1.8.0")
 }

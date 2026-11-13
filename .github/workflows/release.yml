@@ -7,7 +7,6 @@ on:
 permissions: {}
 
 concurrency:
-  # One release per tag. Never cancel a publish in progress.
   group: release-${{ github.ref }}
   cancel-in-progress: false
 
@@ -38,8 +37,7 @@ jobs:
           # Full history and tags: the ancestry check needs them.
           fetch-depth: 0
           # Exception to the no-persisted-credentials rule: the private repository needs the
-          # token for `git fetch` below. This job runs only on a release tag, inside the
-          # release environment.
+          # token for `git fetch` below.
           persist-credentials: true
 
       - name: Require the tag on main
@@ -91,7 +89,6 @@ jobs:
           # This job publishes runtime artifacts. zizmor treats any Gradle cache here as a
           # poisoning path, so the publish build resolves everything without a cache.
           cache-disabled: true
-          # The wrapper JAR is checked against the published checksums before Gradle runs.
           validate-wrappers: true
 
       - name: Check the release version
@@ -105,7 +102,6 @@ jobs:
         run: ./gradlew publish -Pversion=${{ steps.release.outputs.version }}
 
       - name: Attest the published jars
-        # GitHub attestations are available on public repositories (and Enterprise Cloud for private ones).
         if: github.event.repository.private == false
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:

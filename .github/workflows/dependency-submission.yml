@@ -16,7 +16,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
-      # The Dependency Submission API writes a snapshot to the repository.
       contents: write
     steps:
       - name: Checkout

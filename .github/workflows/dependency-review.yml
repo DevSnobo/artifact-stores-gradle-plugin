@@ -8,9 +8,6 @@ permissions: {}
 jobs:
   review:
     name: Review dependency changes
-    # Dependency review needs a public repository, or an organization-owned private
-    # repository with GitHub Advanced Security. A private repository owned by a
-    # personal account cannot run it.
     if: ${{ !github.event.repository.private }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
