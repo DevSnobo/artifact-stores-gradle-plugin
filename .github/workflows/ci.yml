@@ -15,6 +15,11 @@ on:
 
 permissions: {}
 
+env:
+  # The local Gradle build cache is enabled only in CI. Its only store is the GitHub Actions
+  # cache service; there is no remote build cache.
+  GRADLE_BUILD_CACHE_DIR: ${{ github.workspace }}/.gradle/build-cache
+
 concurrency:
   # One run per ref. A new PR push cancels the old run; a main push does not cancel a release run.
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -48,6 +53,18 @@ jobs:
           cache-encryption-key: ${{ secrets.GRADLE_CACHE_ENCRYPTION_KEY }}
           validate-wrappers: true
 
+      - name: Prepare the Gradle build cache directory
+        id: build-cache-dir
+        run: mkdir -p .gradle/build-cache
+
+      - name: Restore the Gradle build cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.GRADLE_BUILD_CACHE_DIR }}
+          key: gradle-build-cache-${{ runner.os }}-verify-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            gradle-build-cache-${{ runner.os }}-verify-
+
       - name: Configuration cache reuse
         run: |
           set -euo pipefail
@@ -63,6 +80,13 @@ jobs:
         run: |
           ./gradlew resolveAndLockAll --write-locks
           git diff --exit-code -- '**/gradle.lockfile' 'gradle.lockfile'
+
+      - name: Save the Gradle build cache
+        if: always() && steps.build-cache-dir.outcome == 'success' && github.ref_name == github.event.repository.default_branch
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.GRADLE_BUILD_CACHE_DIR }}
+          key: gradle-build-cache-${{ runner.os }}-verify-${{ github.run_id }}-${{ github.run_attempt }}
 
   test-gradle-version:
     name: TestKit on Gradle ${{ matrix.gradle }} / JDK ${{ matrix.java }}
@@ -100,10 +124,29 @@ jobs:
           cache-encryption-key: ${{ secrets.GRADLE_CACHE_ENCRYPTION_KEY }}
           validate-wrappers: true
 
+      - name: Prepare the Gradle build cache directory
+        id: build-cache-dir
+        run: mkdir -p .gradle/build-cache
+
+      - name: Restore the Gradle build cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.GRADLE_BUILD_CACHE_DIR }}
+          key: gradle-build-cache-${{ runner.os }}-testkit-${{ matrix.gradle }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            gradle-build-cache-${{ runner.os }}-testkit-${{ matrix.gradle }}-
+
       - name: Run the TestKit suite
         env:
           ARTIFACT_STORE_TEST_GRADLE_VERSION: ${{ matrix.gradle }}
         run: ./gradlew test
+
+      - name: Save the Gradle build cache
+        if: always() && steps.build-cache-dir.outcome == 'success' && github.ref_name == github.event.repository.default_branch
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.GRADLE_BUILD_CACHE_DIR }}
+          key: gradle-build-cache-${{ runner.os }}-testkit-${{ matrix.gradle }}-${{ github.run_id }}-${{ github.run_attempt }}
 
   windows:
     name: Windows (JDK 21)
@@ -134,8 +177,27 @@ jobs:
           cache-encryption-key: ${{ secrets.GRADLE_CACHE_ENCRYPTION_KEY }}
           validate-wrappers: true
 
+      - name: Prepare the Gradle build cache directory
+        id: build-cache-dir
+        run: mkdir -p .gradle/build-cache
+
+      - name: Restore the Gradle build cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.GRADLE_BUILD_CACHE_DIR }}
+          key: gradle-build-cache-${{ runner.os }}-windows-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            gradle-build-cache-${{ runner.os }}-windows-
+
       - name: Check
         run: ./gradlew check
+
+      - name: Save the Gradle build cache
+        if: always() && steps.build-cache-dir.outcome == 'success' && github.ref_name == github.event.repository.default_branch
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.GRADLE_BUILD_CACHE_DIR }}
+          key: gradle-build-cache-${{ runner.os }}-windows-${{ github.run_id }}-${{ github.run_attempt }}
 
   portal-validate:
     name: Plugin Portal validation
