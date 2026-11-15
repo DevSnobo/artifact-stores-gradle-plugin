@@ -30,6 +30,10 @@ jobs:
       id-token: write
       attestations: write
       artifact-metadata: write
+    env:
+      # Secrets cannot be used directly in `if:` expressions. Expose the client ID as an
+      # environment variable so the tailnet step can stay conditional.
+      TS_CI_CLIENT_ID: ${{ secrets.TS_CI_CLIENT_ID }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -75,13 +79,13 @@ jobs:
           java-version: "21"
 
       - name: Join the tailnet
-        if: vars.TS_CI_CLIENT_ID != ''
+        if: env.TS_CI_CLIENT_ID != ''
         uses: tailscale/github-action@064b10558093f38325e838ddea35486bdc6b1d5c # v4.4.0
         with:
-          oauth-client-id: ${{ vars.TS_CI_CLIENT_ID }}
-          audience: ${{ vars.TS_CI_AUDIENCE }}
+          oauth-client-id: ${{ env.TS_CI_CLIENT_ID }}
+          audience: ${{ secrets.TS_CI_AUDIENCE }}
           tags: tag:ci
-          ping: ${{ vars.VPS_TAILNET_HOST }}
+          ping: ${{ secrets.VPS_TAILNET_HOST }}
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
@@ -96,7 +100,7 @@ jobs:
 
       - name: Publish the release
         env:
-          ORG_GRADLE_PROJECT_reposiliteUrl: ${{ vars.REPOSILITE_URL }}
+          ORG_GRADLE_PROJECT_reposiliteUrl: ${{ secrets.REPOSILITE_URL }}
           ORG_GRADLE_PROJECT_reposilitePublisher: release-publish
           ORG_GRADLE_PROJECT_reposiliteToken: ${{ secrets.REPOSILITE_RELEASE_TOKEN }}
         run: ./gradlew publish --no-build-cache -Pversion=${{ steps.release.outputs.version }}
@@ -110,7 +114,7 @@ jobs:
       - name: Publish to the Gradle Plugin Portal
         if: vars.PORTAL_PUBLISH == 'true'
         env:
-          ORG_GRADLE_PROJECT_reposiliteUrl: ${{ vars.REPOSILITE_URL }}
+          ORG_GRADLE_PROJECT_reposiliteUrl: ${{ secrets.REPOSILITE_URL }}
           ORG_GRADLE_PROJECT_reposilitePublisher: ci-read
           ORG_GRADLE_PROJECT_reposiliteToken: ${{ secrets.REPOSILITE_CI_READ_TOKEN }}
           GRADLE_PUBLISH_KEY: ${{ secrets.GRADLE_PUBLISH_KEY }}
