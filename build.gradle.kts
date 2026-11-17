@@ -99,7 +99,7 @@ gradlePlugin {
             compatibility {
                 features {
                     configurationCache = true
-                    isolatedProjects = false
+                    isolatedProjects = true
                 }
             }
         }

@@ -1,5 +1,7 @@
 # Artifact stores Gradle plugin
 
+[![Isolated Projects compatible](https://img.shields.io/badge/Isolated%20Projects-compatible-brightgreen)](#isolated-projects-and-the-configuration-cache)
+
 A Gradle settings plugin that registers Maven artifact stores as dependency and plugin repositories.
 One block in `settings.gradle.kts` configures Reposilite, Nexus, Artifactory or any generic Maven repository,
 including its URLs, credentials and repository routes.
@@ -7,6 +9,7 @@ including its URLs, credentials and repository routes.
 * Plugin id: `net.snobo.artifact-stores`
 * Applied in `settings.gradle.kts`
 * Requires Gradle 8.14.7 or newer and Java 17 or newer
+* Compatible with the configuration cache and Isolated Projects
 * Licensed under Apache-2.0 (see [LICENSE](LICENSE) and [NOTICE](NOTICE))
 
 ## What it does
@@ -153,12 +156,14 @@ artifactStores {
 ```
 
 `repositoriesMode` overrides `dependencyResolutionManagement.repositoriesMode`. When projects declare their
-own repositories and the mode is `PREFER_PROJECT`, Gradle ignores the settings repositories; the plugin logs a
-warning that names those projects. `FAIL_ON_PROJECT_REPOS` turns that situation into a build failure.
+own repositories and the mode is `PREFER_PROJECT`, Gradle ignores the settings repositories; the plugin logs one
+warning per such project, naming the project path. `FAIL_ON_PROJECT_REPOS` turns that situation into a build
+failure.
 
 `refreshChangingModules = true` stops Gradle from honoring the changing-module cache: every configuration of
-every project gets `cacheChangingModulesFor(0, "seconds")`. Gradle has no per-repository cache policy, so the
-switch is build-wide and also affects dependencies that do not come from an artifact store.
+every project gets `cacheChangingModulesFor(0, "seconds")`, applied per project through
+`gradle.lifecycle.beforeProject`. Gradle has no per-repository cache policy, so the switch is build-wide and
+also affects dependencies that do not come from an artifact store.
 
 ## `ArtifactStore` reference
 
@@ -203,7 +208,7 @@ a different `repositoryName`.
 | Property | Type | Default | Description |
 | --- | --- | --- | --- |
 | `repositoriesMode` | `RepositoriesMode` | unset | Overrides `dependencyResolutionManagement.repositoriesMode`. |
-| `refreshChangingModules` | `Boolean` | `false` | Refresh changing modules on every build by setting `cacheChangingModulesFor(0, "seconds")` on every configuration of every project. Build-wide. |
+| `refreshChangingModules` | `Boolean` | `false` | Refresh changing modules on every build by setting `cacheChangingModulesFor(0, "seconds")` on every configuration of every project through `gradle.lifecycle.beforeProject`. Build-wide. |
 
 ## Presets
 
@@ -291,8 +296,21 @@ rules apply to `headerName` and `headerValue`.
 The plugin is a `Settings` plugin. It reads the configuration in `settingsEvaluated`, creates the repositories,
 and adds them to both the settings dependency repositories and the plugin-management repositories. This happens
 before Gradle configures any project, so project dependencies and project plugins both resolve through the
-stores. It also means the `artifactStores` block belongs in `settings.gradle.kts`. The plugin is compatible with
-Gradle's configuration cache.
+stores. It also means the `artifactStores` block belongs in `settings.gradle.kts`.
+
+## Isolated Projects and the configuration cache
+
+The plugin never reads another project. Its per-project work runs as isolated lifecycle actions:
+
+* `refreshChangingModules = true` registers `gradle.lifecycle.beforeProject`, so each project applies
+  `cacheChangingModulesFor(0, "seconds")` to its own configurations.
+* The `PREFER_PROJECT` warning registers `gradle.lifecycle.afterProject`, so each project checks its own
+  repositories and warns about its own path.
+
+Both actions capture no settings, extension or project state, which is what Isolated Projects requires. The
+settings-level repository registration happens before any project exists, so it is unaffected by Isolated
+Projects. The plugin is compatible with Isolated Projects on Gradle 8.14.7 and newer; `GradleLifecycle` itself
+exists since Gradle 8.8. Isolated Projects implies the configuration cache.
 
 ## Releasing
 

@@ -30,7 +30,6 @@ class ArtifactStoresPlugin : Plugin<Settings> {
     override fun apply(settings: Settings) {
         val extension = settings.extensions.create("artifactStores", ArtifactStoresExtension::class.java)
         settings.gradle.settingsEvaluated { configure(settings, extension) }
-        settings.gradle.projectsEvaluated { warnWhenSettingsRepositoriesAreIgnored(settings, extension) }
     }
 
     private fun configure(
@@ -44,10 +43,28 @@ class ArtifactStoresPlugin : Plugin<Settings> {
         }
         if (extension.refreshChangingModules.get()) {
             // Gradle has no per-repository cache policy. The extension switch is build-wide: every configuration
-            // of every project stops honoring the snapshot cache for changing modules.
-            settings.gradle.allprojects { project ->
+            // of every project stops honoring the snapshot cache for changing modules. The lifecycle action runs
+            // in each project's own context, so Isolated Projects can evaluate projects independently.
+            settings.gradle.lifecycle.beforeProject { project ->
                 project.configurations.all { configuration ->
                     configuration.resolutionStrategy.cacheChangingModulesFor(0, "seconds")
+                }
+            }
+        }
+        val warnAboutProjectRepositories =
+            stores.any { it.forDependencies } &&
+                settings.dependencyResolutionManagement.repositoriesMode.get() == RepositoriesMode.PREFER_PROJECT
+        if (warnAboutProjectRepositories) {
+            // One warning per offending project. The action sees only the project it belongs to, which keeps it
+            // compatible with Isolated Projects.
+            settings.gradle.lifecycle.afterProject { project ->
+                if (project.repositories.isNotEmpty()) {
+                    LOGGER.warn(
+                        "Project '${project.path}' declares its own repositories, so Gradle ignores the artifact " +
+                            "store repositories from settings (repositoriesMode = PREFER_PROJECT). Move those " +
+                            "repositories to settings, or set artifactStores.repositoriesMode = " +
+                            "RepositoriesMode.FAIL_ON_PROJECT_REPOS.",
+                    )
                 }
             }
         }
@@ -88,28 +105,6 @@ class ArtifactStoresPlugin : Plugin<Settings> {
                 }
             }
         }
-    }
-
-    private fun warnWhenSettingsRepositoriesAreIgnored(
-        settings: Settings,
-        extension: ArtifactStoresExtension,
-    ) {
-        if (extension.configuredStores.none { it.forDependencies.get() }) return
-        if (settings.dependencyResolutionManagement.repositoriesMode.get() != RepositoriesMode.PREFER_PROJECT) return
-
-        val offenders =
-            settings.gradle.rootProject.allprojects
-                .filter { it.repositories.isNotEmpty() }
-                .map { it.path }
-
-        if (offenders.isEmpty()) return
-
-        LOGGER.warn(
-            "Artifact store repositories declared in settings are ignored by ${offenders.joinToString(", ")} " +
-                "because those projects declare their own repositories (repositoriesMode = PREFER_PROJECT). Move " +
-                "those repositories to settings, or set artifactStores.repositoriesMode = " +
-                "RepositoriesMode.FAIL_ON_PROJECT_REPOS.",
-        )
     }
 }
 

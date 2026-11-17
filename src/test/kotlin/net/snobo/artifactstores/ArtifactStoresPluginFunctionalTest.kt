@@ -2,11 +2,13 @@ package net.snobo.artifactstores
 
 import net.snobo.artifactstores.support.ReposiliteStub
 import org.gradle.testkit.runner.GradleRunner
+import org.gradle.util.GradleVersion
 import java.io.File
 import java.nio.file.Files
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /** Set ARTIFACT_STORE_TEST_GRADLE_VERSION to run the whole suite against another Gradle release. */
@@ -71,6 +73,28 @@ class ArtifactStoresPluginFunctionalTest {
         return runner.withArguments(*args, "--stacktrace")
     }
 
+    /**
+     * Extra arguments that enable Isolated Projects on the Gradle version under test. Gradle 9.7 made
+     * `--isolated-projects` a command-line option; earlier releases only know the system property. Either form
+     * also enables the configuration cache.
+     */
+    private fun isolatedProjects(): List<String> =
+        if (gradleVersionUnderTest() >= GradleVersion.version("9.7")) {
+            listOf("--isolated-projects")
+        } else {
+            listOf("-Dorg.gradle.unsafe.isolated-projects=true")
+        }
+
+    private fun gradleVersionUnderTest(): GradleVersion =
+        testGradleVersion?.let { GradleVersion.version(it) } ?: GradleVersion.current()
+
+    private fun assertIsolatedProjectsEnabled(output: String) {
+        assertTrue(
+            output.contains("isolated projects is an incubating feature", ignoreCase = true),
+            "expected Gradle to enable Isolated Projects:\n$output",
+        )
+    }
+
     /** Writes a settings script with the given body of the `artifactStores` block. */
     private fun settings(
         artifactStoresBlock: String,
@@ -118,6 +142,41 @@ class ArtifactStoresPluginFunctionalTest {
     ) {
         settings(artifactStoresBlock)
         resolveProbeBuild(artifact)
+    }
+
+    /**
+     * Writes a two-project build. The root project has no repositories and no dependencies; `:sub` holds the
+     * probe dependency and a configuration-cache compatible resolve task, so Isolated Projects must configure
+     * both projects independently. The task copies the resolved classpath into `sub/build/resolved`.
+     */
+    private fun multiProjectResolutionProject(
+        artifactStoresBlock: String,
+        projectRepositories: String = "",
+    ) {
+        settings(artifactStoresBlock, extra = "include(\":sub\")")
+        write("build.gradle.kts", "plugins { `java-library` }")
+        write(
+            "sub/build.gradle.kts",
+            """
+            plugins { `java-library` }
+
+            ${projectRepositories.trimIndent()}
+
+            dependencies { implementation("net.snobo.probe:probe:1.0") }
+
+            tasks.register<Copy>("resolveProbe") {
+                from(configurations["compileClasspath"])
+                into(layout.buildDirectory.dir("resolved"))
+            }
+            """,
+        )
+    }
+
+    private fun assertSubProjectResolved(output: String) {
+        assertTrue(
+            File(projectDir, "sub/build/resolved/probe-1.0.jar").isFile,
+            "expected the probe jar in sub/build/resolved:\n$output",
+        )
     }
 
     private fun restartStub(artifactRoutes: Set<String>) {
@@ -473,6 +532,151 @@ class ArtifactStoresPluginFunctionalTest {
                 second.output.contains("Reusing configuration cache")
         assertTrue(reused, "expected the second build to reuse the configuration cache:\n${second.output}")
         assertTrue(File(projectDir, "build/resolved/probe-1.0.jar").isFile, second.output)
+    }
+
+    // Isolated Projects: every project is configured on its own, so the plugin must never read another project.
+    // These fixtures include a `:sub` project to make a cross-project access a build failure instead of a no-op.
+
+    @Test
+    fun `settings repositories resolve a dependency from a subproject under isolated projects`() {
+        credentials()
+        multiProjectResolutionProject(
+            """
+            reposilite("oss") {
+                url = uri("${stub.baseUrl}")
+                includeGroups.add("net.snobo.probe")
+            }
+            """,
+        )
+
+        val result = runner(":sub:resolveProbe", *isolatedProjects().toTypedArray()).build()
+
+        assertIsolatedProjectsEnabled(result.output)
+        assertSubProjectResolved(result.output)
+        val requests = stub.requests.filter { it.path.startsWith("/releases/net/snobo/probe/") }
+        assertTrue(requests.isNotEmpty(), "expected artifact requests, got ${stub.requests}")
+    }
+
+    @Test
+    fun `refreshChangingModules applies to every project under isolated projects`() {
+        credentials()
+        multiProjectResolutionProject(
+            """
+            refreshChangingModules = true
+            reposilite("oss") {
+                url = uri("${stub.baseUrl}")
+                includeGroups.add("net.snobo.probe")
+            }
+            """,
+        )
+
+        val result = runner(":sub:resolveProbe", *isolatedProjects().toTypedArray()).build()
+
+        assertIsolatedProjectsEnabled(result.output)
+        assertSubProjectResolved(result.output)
+    }
+
+    @Test
+    fun `PREFER_PROJECT warns for the project that declares its own repositories under isolated projects`() {
+        restartStub(setOf("releases", "snapshots", "project"))
+        multiProjectResolutionProject(
+            """
+            repositoriesMode.set(org.gradle.api.initialization.resolve.RepositoriesMode.PREFER_PROJECT)
+            reposilite("oss") {
+                url = uri("${stub.baseUrl}")
+                includeGroups.add("net.snobo.probe")
+            }
+            """,
+            projectRepositories =
+                """
+                repositories {
+                    maven {
+                        name = "project"
+                        url = uri("${stub.baseUrl}/project")
+                    }
+                }
+                """,
+        )
+
+        val result = runner(":sub:resolveProbe", *isolatedProjects().toTypedArray()).build()
+
+        assertIsolatedProjectsEnabled(result.output)
+        assertSubProjectResolved(result.output)
+        assertEquals(
+            1,
+            Regex("Project ':[^']*' declares its own repositories").findAll(result.output).count(),
+            "expected exactly one warning:\n${result.output}",
+        )
+        assertTrue(result.output.contains("Project ':sub' declares its own repositories"), result.output)
+        val projectRequests = stub.requests.filter { it.path.startsWith("/project/net/snobo/probe/") }
+        assertTrue(projectRequests.isNotEmpty(), "expected the project repository to resolve: ${stub.requests}")
+        val settingsRequests = stub.requests.filter { it.path.startsWith("/releases/net/snobo/probe/") }
+        assertTrue(settingsRequests.isEmpty(), "expected the settings repositories to be ignored: ${stub.requests}")
+    }
+
+    @Test
+    fun `PREFER_PROJECT without project repositories does not warn under isolated projects`() {
+        credentials()
+        multiProjectResolutionProject(
+            """
+            repositoriesMode.set(org.gradle.api.initialization.resolve.RepositoriesMode.PREFER_PROJECT)
+            reposilite("oss") {
+                url = uri("${stub.baseUrl}")
+                includeGroups.add("net.snobo.probe")
+            }
+            """,
+        )
+
+        val result = runner(":sub:resolveProbe", *isolatedProjects().toTypedArray()).build()
+
+        assertIsolatedProjectsEnabled(result.output)
+        assertSubProjectResolved(result.output)
+        assertTrue(!result.output.contains("declares its own repositories"), result.output)
+    }
+
+    @Test
+    fun `FAIL_ON_PROJECT_REPOS resolves under isolated projects without a warning`() {
+        credentials()
+        multiProjectResolutionProject(
+            """
+            repositoriesMode.set(org.gradle.api.initialization.resolve.RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+            reposilite("oss") {
+                url = uri("${stub.baseUrl}")
+                includeGroups.add("net.snobo.probe")
+            }
+            """,
+        )
+
+        val result = runner(":sub:resolveProbe", *isolatedProjects().toTypedArray()).build()
+
+        assertIsolatedProjectsEnabled(result.output)
+        assertSubProjectResolved(result.output)
+        assertTrue(!result.output.contains("declares its own repositories"), result.output)
+    }
+
+    @Test
+    fun `an isolated projects build reuses the configuration cache`() {
+        credentials()
+        multiProjectResolutionProject(
+            """
+            reposilite("oss") {
+                url = uri("${stub.baseUrl}")
+                includeGroups.add("net.snobo.probe")
+            }
+            """,
+        )
+
+        val arguments = arrayOf(":sub:resolveProbe", *isolatedProjects().toTypedArray())
+        val first = runner(*arguments).build()
+        assertIsolatedProjectsEnabled(first.output)
+        assertSubProjectResolved(first.output)
+
+        val second = runner(*arguments).build()
+        val reused =
+            second.output.contains("Configuration cache entry reused") ||
+                second.output.contains("Reusing configuration cache")
+        assertTrue(reused, "expected the second build to reuse the configuration cache:\n${second.output}")
+        assertSubProjectResolved(second.output)
     }
 
     @Test
