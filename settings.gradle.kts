@@ -37,6 +37,27 @@ gradle.lifecycle.beforeProject {
     }
 }
 
+// Register the resolution task after the build script has created and finalized its
+// configurations. Each project owns its task and resolves only its own configurations. Running
+// `./gradlew resolveAndLockAll` executes the task in every project, so no task action touches
+// another project and the work is compatible with Isolated Projects and the configuration cache.
+gradle.lifecycle.afterProject {
+    val resolvableConfigurations = objects.fileCollection()
+    configurations.filter { it.isCanBeResolved }.forEach { resolvableConfigurations.from(it) }
+    tasks.register("resolveAndLockAll") {
+        group = "verification"
+        description =
+            "Resolves this project's resolvable configurations for dependency locking " +
+            "(run with --write-locks)."
+        outputs.upToDateWhen { false }
+        inputs.files(resolvableConfigurations)
+        doLast {
+            // Force resolution. Gradle also resolves the declared inputs for fingerprinting.
+            inputs.files.files
+        }
+    }
+}
+
 rootProject.name = "artifact-stores-gradle-plugin"
 
 include(":artifact-store-support")

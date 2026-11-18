@@ -81,7 +81,7 @@ jobs:
 
       - name: Check lockfiles are current
         run: |
-          ./gradlew resolveAndLockAll --write-locks
+          ./gradlew resolveAndLockAll --write-locks --isolated-projects
           git diff --exit-code -- '**/gradle.lockfile' 'gradle.lockfile'
 
       - name: Save the Gradle build cache
