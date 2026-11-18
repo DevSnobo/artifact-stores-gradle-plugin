@@ -76,6 +76,9 @@ jobs:
       - name: Verify
         run: ./gradlew check --warning-mode=fail
 
+      - name: Verify with Isolated Projects
+        run: ./gradlew check --isolated-projects --warning-mode=fail
+
       - name: Check lockfiles are current
         run: |
           ./gradlew resolveAndLockAll --write-locks
