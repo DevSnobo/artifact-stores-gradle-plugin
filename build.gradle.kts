@@ -20,22 +20,6 @@ group = "net.snobo"
 // The release workflow passes the version from the release tag. Every other build is a local snapshot.
 version = providers.gradleProperty("version").orElse("local-SNAPSHOT").get()
 
-tasks.register("resolveAndLockAll") {
-    group = "verification"
-    description = "Resolves every resolvable configuration and writes dependency lock state."
-    notCompatibleWithConfigurationCache("Resolves configurations at execution time.")
-    doFirst {
-        require(gradle.startParameter.isWriteDependencyLocks) {
-            "Run this task with --write-locks."
-        }
-    }
-    doLast {
-        allprojects.forEach { target ->
-            target.configurations.filter { it.isCanBeResolved }.forEach { it.resolve() }
-        }
-    }
-}
-
 kotlin {
     jvmToolchain(21)
     compilerOptions {
