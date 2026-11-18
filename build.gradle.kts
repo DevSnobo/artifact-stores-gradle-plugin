@@ -2,7 +2,6 @@ import groovy.util.Node
 import org.gradle.api.publish.PublishingExtension
 import org.gradle.api.publish.maven.MavenPublication
 import org.gradle.api.publish.tasks.GenerateModuleMetadata
-import org.gradle.api.tasks.bundling.AbstractArchiveTask
 import org.gradle.plugin.compatibility.compatibility
 import java.util.Properties
 
@@ -20,18 +19,6 @@ group = "net.snobo"
 
 // The release workflow passes the version from the release tag. Every other build is a local snapshot.
 version = providers.gradleProperty("version").orElse("local-SNAPSHOT").get()
-
-allprojects {
-    dependencyLocking {
-        lockAllConfigurations()
-    }
-    // Gradle 9 made these the defaults; Gradle 8.14 still needs the explicit block, and the
-    // release and verification jobs must produce byte-identical archives.
-    tasks.withType<AbstractArchiveTask>().configureEach {
-        isPreserveFileTimestamps = false
-        isReproducibleFileOrder = true
-    }
-}
 
 tasks.register("resolveAndLockAll") {
     group = "verification"
@@ -165,7 +152,8 @@ tasks.processResources {
 }
 
 tasks.withType<Jar>().matching { it.name == "sourcesJar" }.configureEach {
-    from(project(":artifact-store-support").file("src/main/kotlin"))
+    // projectDir is immutable project data, so this stays Isolated Projects compatible.
+    from(project(":artifact-store-support").projectDir.resolve("src/main/kotlin"))
     from(rootProject.file("LICENSE")) { into("META-INF") }
     from(rootProject.file("NOTICE")) { into("META-INF") }
 }
