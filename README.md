@@ -1,6 +1,6 @@
 # Artifact stores Gradle plugin
 
-[![Isolated Projects compatible](https://img.shields.io/badge/Isolated%20Projects-compatible-brightgreen)](#isolated-projects-and-the-configuration-cache)
+![Isolated Projects compatible](https://img.shields.io/badge/Isolated%20Projects-compatible-brightgreen)
 
 A Gradle settings plugin that registers Maven artifact stores as dependency and plugin repositories.
 One block in `settings.gradle.kts` configures Reposilite, Nexus, Artifactory or any generic Maven repository,
@@ -297,20 +297,6 @@ The plugin is a `Settings` plugin. It reads the configuration in `settingsEvalua
 and adds them to both the settings dependency repositories and the plugin-management repositories. This happens
 before Gradle configures any project, so project dependencies and project plugins both resolve through the
 stores. It also means the `artifactStores` block belongs in `settings.gradle.kts`.
-
-## Isolated Projects and the configuration cache
-
-The plugin never reads another project. Its per-project work runs as isolated lifecycle actions:
-
-* `refreshChangingModules = true` registers `gradle.lifecycle.beforeProject`, so each project applies
-  `cacheChangingModulesFor(0, "seconds")` to its own configurations.
-* The `PREFER_PROJECT` warning registers `gradle.lifecycle.afterProject`, so each project checks its own
-  repositories and warns about its own path.
-
-Both actions capture no settings, extension or project state, which is what Isolated Projects requires. The
-settings-level repository registration happens before any project exists, so it is unaffected by Isolated
-Projects. The plugin is compatible with Isolated Projects on Gradle 8.14.7 and newer; `GradleLifecycle` itself
-exists since Gradle 8.8. Isolated Projects implies the configuration cache.
 
 ## Releasing
 
