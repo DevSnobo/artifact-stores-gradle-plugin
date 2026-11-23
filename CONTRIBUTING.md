@@ -25,6 +25,13 @@ ARTIFACT_STORE_TEST_GRADLE_VERSION=9.9.1 ./gradlew test
 `check` runs ktlint, plugin validation and the TestKit suite. Functional tests start an in-process
 HTTP stub, so no artifact server or credentials are needed.
 
+## Dogfooded plugin version
+
+The build applies the last published `net.snobo.artifact-stores` in `settings.gradle.kts`. Bump that
+version after every release. CI compares it with the latest stable version on the Gradle Plugin Portal
+and fails when the build is behind. A release pull request that intentionally applies the version it
+is about to publish can set the repository variable `DOGFOOD_VERSION_OVERRIDE` to that version.
+
 ## Change checklist
 
 - Keep one logical change per pull request and use an imperative commit subject such as
