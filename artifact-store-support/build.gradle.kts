@@ -1,4 +1,5 @@
 import org.gradle.api.publish.maven.MavenPublication
+import org.gradle.api.publish.tasks.GenerateModuleMetadata
 
 plugins {
     kotlin("jvm")
@@ -38,6 +39,10 @@ publishing {
     publications {
         create<MavenPublication>("maven") {
             from(components["java"])
+            // The test fixtures are for this repository's own tests. Publishing the java component
+            // would otherwise advertise a test-fixtures variant whose jar is never uploaded.
+            suppressPomMetadataWarningsFor("testFixturesApiElements")
+            suppressPomMetadataWarningsFor("testFixturesRuntimeElements")
             pom {
                 name.set("Artifact stores support")
                 description.set(
@@ -83,6 +88,12 @@ publishing {
             }
         }
     }
+}
+
+// Publish a POM only. The java component also carries the local test-fixtures variants, and
+// Gradle module metadata would advertise their jar even though only the main jar is published.
+tasks.withType<GenerateModuleMetadata>().configureEach {
+    enabled = false
 }
 
 ktlint {
