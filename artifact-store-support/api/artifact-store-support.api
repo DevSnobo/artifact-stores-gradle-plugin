@@ -1,0 +1,88 @@
+public final class net/snobo/artifactstores/support/ArtifactStoreProfile {
+	public fun <init> (Lnet/snobo/artifactstores/support/ArtifactStoreType;Ljava/lang/String;Ljava/lang/String;Lnet/snobo/artifactstores/support/AuthType;Ljava/lang/String;Z)V
+	public final fun component1 ()Lnet/snobo/artifactstores/support/ArtifactStoreType;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()Ljava/lang/String;
+	public final fun component4 ()Lnet/snobo/artifactstores/support/AuthType;
+	public final fun component5 ()Ljava/lang/String;
+	public final fun component6 ()Z
+	public final fun copy (Lnet/snobo/artifactstores/support/ArtifactStoreType;Ljava/lang/String;Ljava/lang/String;Lnet/snobo/artifactstores/support/AuthType;Ljava/lang/String;Z)Lnet/snobo/artifactstores/support/ArtifactStoreProfile;
+	public static synthetic fun copy$default (Lnet/snobo/artifactstores/support/ArtifactStoreProfile;Lnet/snobo/artifactstores/support/ArtifactStoreType;Ljava/lang/String;Ljava/lang/String;Lnet/snobo/artifactstores/support/AuthType;Ljava/lang/String;ZILjava/lang/Object;)Lnet/snobo/artifactstores/support/ArtifactStoreProfile;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAuth ()Lnet/snobo/artifactstores/support/AuthType;
+	public final fun getDefaultUrl ()Ljava/lang/String;
+	public final fun getReleasesRoute ()Ljava/lang/String;
+	public final fun getSnapshotsRoute ()Ljava/lang/String;
+	public final fun getSnapshotsShareReleases ()Z
+	public final fun getType ()Lnet/snobo/artifactstores/support/ArtifactStoreType;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class net/snobo/artifactstores/support/ArtifactStoreProfiles {
+	public static final field INSTANCE Lnet/snobo/artifactstores/support/ArtifactStoreProfiles;
+	public final fun of (Lnet/snobo/artifactstores/support/ArtifactStoreType;)Lnet/snobo/artifactstores/support/ArtifactStoreProfile;
+}
+
+public final class net/snobo/artifactstores/support/ArtifactStoreType : java/lang/Enum {
+	public static final field ARTIFACTORY Lnet/snobo/artifactstores/support/ArtifactStoreType;
+	public static final field GENERIC Lnet/snobo/artifactstores/support/ArtifactStoreType;
+	public static final field NEXUS Lnet/snobo/artifactstores/support/ArtifactStoreType;
+	public static final field REPOSILITE Lnet/snobo/artifactstores/support/ArtifactStoreType;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lnet/snobo/artifactstores/support/ArtifactStoreType;
+	public static fun values ()[Lnet/snobo/artifactstores/support/ArtifactStoreType;
+}
+
+public final class net/snobo/artifactstores/support/ArtifactStoreTypeKt {
+	public static final fun getId (Lnet/snobo/artifactstores/support/ArtifactStoreType;)Ljava/lang/String;
+}
+
+public final class net/snobo/artifactstores/support/AuthType : java/lang/Enum {
+	public static final field BASIC Lnet/snobo/artifactstores/support/AuthType;
+	public static final field HEADER Lnet/snobo/artifactstores/support/AuthType;
+	public static final field NONE Lnet/snobo/artifactstores/support/AuthType;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lnet/snobo/artifactstores/support/AuthType;
+	public static fun values ()[Lnet/snobo/artifactstores/support/AuthType;
+}
+
+public final class net/snobo/artifactstores/support/StoreField : java/lang/Enum {
+	public static final field HEADER_NAME Lnet/snobo/artifactstores/support/StoreField;
+	public static final field HEADER_VALUE Lnet/snobo/artifactstores/support/StoreField;
+	public static final field PASSWORD Lnet/snobo/artifactstores/support/StoreField;
+	public static final field RELEASES_REPOSITORY Lnet/snobo/artifactstores/support/StoreField;
+	public static final field RELEASES_URL Lnet/snobo/artifactstores/support/StoreField;
+	public static final field SNAPSHOTS_REPOSITORY Lnet/snobo/artifactstores/support/StoreField;
+	public static final field SNAPSHOTS_URL Lnet/snobo/artifactstores/support/StoreField;
+	public static final field URL Lnet/snobo/artifactstores/support/StoreField;
+	public static final field USERNAME Lnet/snobo/artifactstores/support/StoreField;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public final fun getEnvironment ()Ljava/lang/String;
+	public final fun getProperty ()Ljava/lang/String;
+	public static fun valueOf (Ljava/lang/String;)Lnet/snobo/artifactstores/support/StoreField;
+	public static fun values ()[Lnet/snobo/artifactstores/support/StoreField;
+}
+
+public final class net/snobo/artifactstores/support/StoreFieldNames {
+	public fun <init> (Ljava/lang/String;)V
+	public final fun environment (Lnet/snobo/artifactstores/support/StoreField;)Ljava/lang/String;
+	public final fun environmentVariable (Lnet/snobo/artifactstores/support/StoreField;)Ljava/lang/String;
+	public final fun getEnvironmentPrefix ()Ljava/lang/String;
+	public final fun gradleProperty (Lnet/snobo/artifactstores/support/StoreField;)Ljava/lang/String;
+	public final fun property (Lnet/snobo/artifactstores/support/StoreField;)Ljava/lang/String;
+}
+
+public final class net/snobo/artifactstores/support/StoreValues {
+	public fun <init> (Lorg/gradle/api/provider/ProviderFactory;Ljava/lang/String;)V
+	public final fun string (Lnet/snobo/artifactstores/support/StoreField;)Lorg/gradle/api/provider/Provider;
+	public final fun uri (Lnet/snobo/artifactstores/support/StoreField;)Lorg/gradle/api/provider/Provider;
+}
+
+public final class net/snobo/artifactstores/support/UriSupportKt {
+	public static final fun isLoopback (Ljava/net/URI;)Z
+	public static final fun isPlainHttp (Ljava/net/URI;)Z
+	public static final fun uriOf (Ljava/lang/String;Ljava/lang/String;)Ljava/net/URI;
+	public static final fun withRoute (Ljava/net/URI;Ljava/lang/String;)Ljava/net/URI;
+}
+

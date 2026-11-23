@@ -32,6 +32,16 @@ version after every release. CI compares it with the latest stable version on th
 and fails when the build is behind. A release pull request that intentionally applies the version it
 is about to publish can set the repository variable `DOGFOOD_VERSION_OVERRIDE` to that version.
 
+## Public API
+
+The public API is dumped under `api/` and checked by the `API compatibility` CI job. Binary
+compatibility validation is not Isolated Projects compatible yet, so `apiCheck` is not part of
+`check`. After a public API change, regenerate the dumps and commit them:
+
+```bash
+./gradlew apiDump -Dorg.gradle.isolated-projects=false
+```
+
 ## Change checklist
 
 - Keep one logical change per pull request and use an imperative commit subject such as

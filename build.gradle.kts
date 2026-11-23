@@ -5,6 +5,17 @@ import org.gradle.api.publish.tasks.GenerateModuleMetadata
 import org.gradle.plugin.compatibility.compatibility
 import java.util.Properties
 
+buildscript {
+    repositories {
+        gradlePluginPortal()
+        mavenCentral()
+    }
+    dependencies {
+        // Applied conditionally below: BCV 0.18.2 is not Isolated Projects compatible.
+        classpath("org.jetbrains.kotlinx:binary-compatibility-validator:0.18.2")
+    }
+}
+
 plugins {
     kotlin("jvm") version "2.4.21"
     `java-gradle-plugin`
@@ -13,6 +24,16 @@ plugins {
     id("com.gradleup.shadow") version "9.6.1"
     // Publishes the plugin to the Gradle Plugin Portal. Only the release workflow runs the upload.
     id("com.gradle.plugin-publish") version "2.2.1"
+}
+
+// BCV 0.18.2 applies itself through `allprojects`, which Isolated Projects rejects. Keep it off in the
+// normal build and run `apiCheck` in a dedicated job with `-Dorg.gradle.isolated-projects=false`.
+val isolatedProjects =
+    System.getProperty("org.gradle.isolated-projects")?.toBoolean()
+        ?: providers.gradleProperty("org.gradle.isolated-projects").orNull?.toBoolean()
+        ?: false
+if (!isolatedProjects) {
+    apply(plugin = "org.jetbrains.kotlinx.binary-compatibility-validator")
 }
 
 group = "net.snobo"

@@ -277,3 +277,33 @@ jobs:
             exit 1
           fi
           echo "Dogfood version $declared is the latest stable Plugin Portal release."
+
+  api-validation:
+    name: API compatibility
+    # Binary compatibility validation uses allprojects and cannot run with Isolated Projects enabled.
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+        with:
+          cache-provider: basic
+          cache-read-only: true
+          cache-encryption-key: ${{ secrets.GRADLE_CACHE_ENCRYPTION_KEY }}
+          validate-wrappers: true
+
+      - name: Check the public API
+        run: ./gradlew apiCheck -Dorg.gradle.isolated-projects=false
