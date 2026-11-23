@@ -40,6 +40,7 @@ class ResolvedArtifactStoreTest {
         snapshotsUrl = URI(snapshots),
         credentials = StoreCredentials.None,
         includeGroups = emptyList(),
+        exclusive = false,
         allowInsecure = true,
         forDependencies = true,
         forPlugins = true,

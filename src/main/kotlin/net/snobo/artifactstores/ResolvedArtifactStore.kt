@@ -21,6 +21,7 @@ internal data class ResolvedArtifactStore(
     val snapshotsUrl: URI,
     val credentials: StoreCredentials,
     val includeGroups: List<String>,
+    val exclusive: Boolean,
     val allowInsecure: Boolean,
     val forDependencies: Boolean,
     val forPlugins: Boolean,
@@ -71,6 +72,14 @@ internal fun ArtifactStore.resolve(logger: Logger): ResolvedArtifactStore? {
         )
         return null
     }
+    val groups = includeGroups.get().filter { it.isNotBlank() }
+    val exclusive = exclusive.get()
+    if (exclusive && groups.isEmpty()) {
+        throw GradleException(
+            "Artifact store '$name' sets 'exclusive = true' but has no 'includeGroups'. " +
+                "An exclusive store needs at least one group to filter.",
+        )
+    }
     val names = StoreFieldNames(name)
     val baseUrl = url.orNull
     val releases = releasesUrl.orNull ?: releaseFromBaseUrl(baseUrl, names, profile)
@@ -85,7 +94,8 @@ internal fun ArtifactStore.resolve(logger: Logger): ResolvedArtifactStore? {
         releasesUrl = releases,
         snapshotsUrl = snapshots,
         credentials = resolveCredentials(profile, names, logger),
-        includeGroups = includeGroups.get().filter { it.isNotBlank() },
+        includeGroups = groups,
+        exclusive = exclusive,
         allowInsecure = allowInsecure,
         forDependencies = dependencies,
         forPlugins = plugins,

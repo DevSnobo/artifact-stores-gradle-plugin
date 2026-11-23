@@ -109,23 +109,53 @@ class ArtifactStoresPlugin : Plugin<Settings> {
 }
 
 internal fun RepositoryHandler.registerArtifactStore(store: ResolvedArtifactStore) {
+    if (store.exclusive) {
+        exclusiveContent(
+            Action { exclusive ->
+                store.repositoryDefinitions().forEach { definition ->
+                    exclusive.forRepository {
+                        maven(
+                            Action { repository ->
+                                configureRepository(store, definition, repository, applyGroupFilter = false)
+                            },
+                        )
+                    }
+                }
+                exclusive.filter(
+                    Action { filter ->
+                        store.includeGroups.forEach(filter::includeGroupAndSubgroups)
+                    },
+                )
+            },
+        )
+        return
+    }
     store.repositoryDefinitions().forEach { definition ->
         maven(
             Action { repository ->
-                repository.name = definition.name
-                repository.setUrl(definition.url)
-                repository.isAllowInsecureProtocol = store.allowInsecure
-                if (store.includeGroups.isNotEmpty()) {
-                    repository.content(
-                        Action { content ->
-                            store.includeGroups.forEach(content::includeGroupAndSubgroups)
-                        },
-                    )
-                }
-                store.credentials.applyTo(repository)
+                configureRepository(store, definition, repository)
             },
         )
     }
+}
+
+private fun configureRepository(
+    store: ResolvedArtifactStore,
+    definition: RepositoryDefinition,
+    repository: MavenArtifactRepository,
+    applyGroupFilter: Boolean = true,
+) {
+    repository.name = definition.name
+    repository.setUrl(definition.url)
+    repository.isAllowInsecureProtocol = store.allowInsecure
+    if (applyGroupFilter && store.includeGroups.isNotEmpty()) {
+        repository.content(
+            Action { content ->
+                store.includeGroups.forEach(content::includeGroupAndSubgroups)
+            },
+        )
+    }
+    store.credentials.applyTo(repository)
 }
 
 private fun StoreCredentials.applyTo(repository: MavenArtifactRepository) {

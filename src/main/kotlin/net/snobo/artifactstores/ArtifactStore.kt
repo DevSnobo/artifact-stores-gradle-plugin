@@ -54,6 +54,13 @@ abstract class ArtifactStore
         abstract val includeGroups: ListProperty<String>
 
         /**
+         * Register the store through Gradle `exclusiveContent`. Its groups are then served only by this
+         * store and never fall through to another repository. Requires at least one [includeGroups]
+         * entry. The default is false.
+         */
+        abstract val exclusive: Property<Boolean>
+
+        /**
          * Opt in to plain HTTP for the created repositories. The default is true. With false, registration
          * fails when a resolved releases or snapshots URL is plain HTTP.
          */

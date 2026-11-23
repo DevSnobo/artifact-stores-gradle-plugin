@@ -126,6 +126,28 @@ artifactStores {
 }
 ```
 
+### Exclusive stores
+
+Set `exclusive = true` to register the store through Gradle's `exclusiveContent`. Its `includeGroups`
+are then served only by this store, so a missing internal artifact fails instead of resolving from
+Maven Central or another repository. At least one `includeGroups` entry is required.
+
+```kotlin
+artifactStores {
+    generic("internal") {
+        releasesUrl = uri("https://repo.example.com/releases")
+        includeGroups.add("com.example.internal")
+        exclusive = true
+    }
+    generic("central") {
+        releasesUrl = uri("https://repo1.maven.org/maven2")
+    }
+}
+```
+
+Without `exclusive`, a missing `com.example.internal` artifact can fall through to `central`, which is
+the dependency-confusion risk this mode closes.
+
 ## Multi-store example
 
 Stores are tried in declaration order. Use `includeGroups` to keep each store responsible for its own groups.
