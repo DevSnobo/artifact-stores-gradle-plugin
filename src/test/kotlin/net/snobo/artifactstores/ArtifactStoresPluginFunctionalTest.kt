@@ -871,6 +871,55 @@ class ArtifactStoresPluginFunctionalTest {
     }
 
     @Test
+    fun `release and snapshot repositories only serve their own version kind`() {
+        restartStub(setOf("releases", "snapshots"))
+        settings(
+            """
+            generic("store") {
+                releasesUrl = uri("${stub.baseUrl}/releases")
+                snapshotsUrl = uri("${stub.baseUrl}/snapshots")
+                includeGroups.add("net.snobo.probe")
+            }
+            """,
+        )
+        write(
+            "build.gradle.kts",
+            """
+            plugins { `java-library` }
+
+            val releaseProbe by configurations.creating
+            val snapshotProbe by configurations.creating
+
+            dependencies {
+                releaseProbe("net.snobo.probe:probe:1.0")
+                snapshotProbe("net.snobo.probe:probe:1.0-SNAPSHOT")
+            }
+
+            tasks.register("resolveProbe") {
+                inputs.files(releaseProbe, snapshotProbe)
+                doLast {
+                    println("RELEASE=" + releaseProbe.files.map { it.name }.sorted())
+                    println("SNAPSHOT=" + snapshotProbe.files.map { it.name }.sorted())
+                }
+            }
+            """,
+        )
+
+        val result = runner("resolveProbe", "--refresh-dependencies").build()
+
+        assertTrue(result.output.contains("probe-1.0.jar"), result.output)
+        assertTrue(result.output.contains("probe-1.0-SNAPSHOT.jar"), result.output)
+        assertTrue(
+            stub.requests.none { it.path.contains("/releases/") && it.path.contains("1.0-SNAPSHOT") },
+            "the releases repository received a snapshot request: ${stub.requests}",
+        )
+        assertTrue(
+            stub.requests.none { it.path.contains("/snapshots/") && it.path.contains("/1.0/") },
+            "the snapshots repository received a release request: ${stub.requests}",
+        )
+    }
+
+    @Test
     fun `the DSL beats a Gradle property and a Gradle property beats the environment`() {
         write(
             "gradle.properties",

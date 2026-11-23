@@ -18,6 +18,10 @@ The plugin reads its configuration while Gradle evaluates settings. It then adds
 `dependencyResolutionManagement.repositories` (for dependencies) and `pluginManagement.repositories` (for
 Gradle plugins), before any project is configured. Both kinds of resolution can therefore use the same store.
 
+When a store has separate releases and snapshots URLs, the releases repository is marked with
+`mavenContent { releasesOnly() }` and the snapshots repository with `snapshotsOnly()`. Gradle then does
+not query the wrong route for a version, and a snapshot request never hits the releases repository.
+
 Each store is created by a preset function: `reposilite`, `nexus`, `artifactory` or `generic`. The preset
 applies the default routes, authentication mode and base URL of that product. A configuration block overrides
 anything that differs.

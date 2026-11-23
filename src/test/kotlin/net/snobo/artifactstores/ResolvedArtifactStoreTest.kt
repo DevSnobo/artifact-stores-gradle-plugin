@@ -10,7 +10,7 @@ class ResolvedArtifactStoreTest {
         val store = store(releases = "https://repo.example.com/maven2", snapshots = "https://repo.example.com/maven2")
 
         assertEquals(
-            listOf(RepositoryDefinition("oss", URI("https://repo.example.com/maven2"))),
+            listOf(RepositoryDefinition("oss", URI("https://repo.example.com/maven2"), RepositoryContent.BOTH)),
             store.repositoryDefinitions(),
         )
     }
@@ -22,8 +22,16 @@ class ResolvedArtifactStoreTest {
 
         assertEquals(
             listOf(
-                RepositoryDefinition("oss-Releases", URI("https://repo.example.com/releases")),
-                RepositoryDefinition("oss-Snapshots", URI("https://repo.example.com/snapshots")),
+                RepositoryDefinition(
+                    "oss-Releases",
+                    URI("https://repo.example.com/releases"),
+                    RepositoryContent.RELEASES,
+                ),
+                RepositoryDefinition(
+                    "oss-Snapshots",
+                    URI("https://repo.example.com/snapshots"),
+                    RepositoryContent.SNAPSHOTS,
+                ),
             ),
             store.repositoryDefinitions(),
         )
