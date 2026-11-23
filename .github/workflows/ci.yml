@@ -236,3 +236,44 @@ jobs:
           GRADLE_PUBLISH_SECRET: ${{ secrets.GRADLE_PUBLISH_SECRET }}
         # A fixed non-SNAPSHOT version: the Portal rejects SNAPSHOT metadata, and validation never uploads.
         run: ./gradlew publishPlugins --validate-only -Pversion=0.0.0-validation
+
+  dogfood-version:
+    name: Dogfood version
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Compare the dogfood version with the Plugin Portal
+        env:
+          DOGFOOD_VERSION_OVERRIDE: ${{ vars.DOGFOOD_VERSION_OVERRIDE }}
+        run: |
+          set -euo pipefail
+          declared=$(sed -n 's/.*id("net.snobo.artifact-stores") version "\([^"]*\)".*/\1/p' settings.gradle.kts)
+          if [ -z "$declared" ]; then
+            echo "::error::settings.gradle.kts does not declare the net.snobo.artifact-stores plugin version"
+            exit 1
+          fi
+          metadata=$(curl -fsS --retry 3 https://plugins.gradle.org/m2/net/snobo/artifact-stores/net.snobo.artifact-stores.gradle.plugin/maven-metadata.xml)
+          # Pre-releases are not dogfood candidates. Set the repository variable
+          # DOGFOOD_VERSION_OVERRIDE to the version of a release PR that intentionally applies
+          # the version it is about to publish.
+          stable=$(printf '%s\n' "$metadata" | grep -o '<version>[^<]*</version>' | sed 's:<[^>]*>::g' | grep -v -- '-' | tail -n 1)
+          if [ -z "$stable" ]; then
+            echo "::error::Could not read a stable version from the Plugin Portal metadata"
+            exit 1
+          fi
+          if [ -n "$DOGFOOD_VERSION_OVERRIDE" ] && [ "$declared" = "$DOGFOOD_VERSION_OVERRIDE" ]; then
+            echo "The build applies $declared, allowed by DOGFOOD_VERSION_OVERRIDE."
+            exit 0
+          fi
+          if [ "$declared" != "$stable" ]; then
+            echo "::error::The build applies net.snobo.artifact-stores $declared but the latest stable Plugin Portal release is $stable. Bump the dogfood version."
+            exit 1
+          fi
+          echo "Dogfood version $declared is the latest stable Plugin Portal release."
