@@ -27,10 +27,18 @@ internal data class ResolvedArtifactStore(
     val forPlugins: Boolean,
 )
 
+/** Which Maven version kind one Gradle repository serves. */
+internal enum class RepositoryContent {
+    RELEASES,
+    SNAPSHOTS,
+    BOTH,
+}
+
 /** One Gradle repository to create for a store. */
 internal data class RepositoryDefinition(
     val name: String,
     val url: URI,
+    val content: RepositoryContent,
 )
 
 internal sealed interface StoreCredentials {
@@ -49,11 +57,11 @@ internal sealed interface StoreCredentials {
 
 internal fun ResolvedArtifactStore.repositoryDefinitions(): List<RepositoryDefinition> =
     if (snapshotsUrl == releasesUrl) {
-        listOf(RepositoryDefinition(repositoryName, releasesUrl))
+        listOf(RepositoryDefinition(repositoryName, releasesUrl, RepositoryContent.BOTH))
     } else {
         listOf(
-            RepositoryDefinition("$repositoryName-Releases", releasesUrl),
-            RepositoryDefinition("$repositoryName-Snapshots", snapshotsUrl),
+            RepositoryDefinition("$repositoryName-Releases", releasesUrl, RepositoryContent.RELEASES),
+            RepositoryDefinition("$repositoryName-Snapshots", snapshotsUrl, RepositoryContent.SNAPSHOTS),
         )
     }
 

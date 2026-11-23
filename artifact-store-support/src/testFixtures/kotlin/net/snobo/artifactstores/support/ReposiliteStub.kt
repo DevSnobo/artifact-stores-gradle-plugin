@@ -53,7 +53,7 @@ class ReposiliteStub(
             }
 
             path.endsWith(".pom") && servesArtifacts(path) -> {
-                respond(exchange, 200, pom(), "application/xml")
+                respond(exchange, 200, pom(path), "application/xml")
             }
 
             path.endsWith(".pom") -> {
@@ -62,7 +62,7 @@ class ReposiliteStub(
 
             path.endsWith(".sha1") && servesArtifacts(path) -> {
                 val target = path.removeSuffix(".sha1")
-                val content = if (target.endsWith(".pom")) pom().toByteArray() else "stub artifact".toByteArray()
+                val content = if (target.endsWith(".pom")) pom(target).toByteArray() else "stub artifact".toByteArray()
                 respond(exchange, 200, sha1(content), "text/plain")
             }
 
@@ -98,16 +98,20 @@ class ReposiliteStub(
     private fun notFound(exchange: HttpExchange) =
         respond(exchange, 404, """{"status":404,"message":"File not found"}""")
 
-    private fun pom() =
-        """
-        <project xmlns="http://maven.apache.org/POM/4.0.0">
-          <modelVersion>4.0.0</modelVersion>
-          <groupId>net.snobo.probe</groupId>
-          <artifactId>probe</artifactId>
-          <version>1.0</version>
-          <packaging>jar</packaging>
-        </project>
-        """.trimIndent()
+    private fun pom(path: String): String {
+        val version = path.substringBeforeLast('/').substringAfterLast('/')
+        val pom =
+            """
+            <project xmlns="http://maven.apache.org/POM/4.0.0">
+              <modelVersion>4.0.0</modelVersion>
+              <groupId>net.snobo.probe</groupId>
+              <artifactId>probe</artifactId>
+              <version>$version</version>
+              <packaging>jar</packaging>
+            </project>
+            """.trimIndent()
+        return pom
+    }
 
     private fun sha1(bytes: ByteArray): String =
         MessageDigest.getInstance("SHA-1").digest(bytes).joinToString("") { "%02x".format(it) }

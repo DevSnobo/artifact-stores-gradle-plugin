@@ -148,6 +148,11 @@ private fun configureRepository(
     repository.name = definition.name
     repository.setUrl(definition.url)
     repository.isAllowInsecureProtocol = store.allowInsecure
+    when (definition.content) {
+        RepositoryContent.RELEASES -> repository.mavenContent(Action { content -> content.releasesOnly() })
+        RepositoryContent.SNAPSHOTS -> repository.mavenContent(Action { content -> content.snapshotsOnly() })
+        RepositoryContent.BOTH -> Unit
+    }
     if (applyGroupFilter && store.includeGroups.isNotEmpty()) {
         repository.content(
             Action { content ->
