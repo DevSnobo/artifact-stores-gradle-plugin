@@ -26,7 +26,8 @@ jobs:
     environment:
       name: release
     permissions:
-      contents: read
+      # Create the GitHub Release for the tag and upload its artifacts.
+      contents: write
       id-token: write
       attestations: write
       artifact-metadata: write
@@ -133,3 +134,22 @@ jobs:
           GRADLE_PUBLISH_KEY: ${{ secrets.GRADLE_PUBLISH_KEY }}
           GRADLE_PUBLISH_SECRET: ${{ secrets.GRADLE_PUBLISH_SECRET }}
         run: ./gradlew publishPlugins --no-build-cache -Pversion=${{ steps.release.outputs.version }}
+
+      - name: Create the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          version="${{ steps.release.outputs.version }}"
+          if gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1; then
+            echo "GitHub Release $GITHUB_REF_NAME already exists; replacing its artifacts."
+          else
+            gh release create "$GITHUB_REF_NAME" --title "Artifact stores $version" --generate-notes
+          fi
+          shopt -s nullglob
+          artifacts=(build/libs/*"$version"*.jar artifact-store-support/build/libs/*"$version"*.jar)
+          if [ ${#artifacts[@]} -eq 0 ]; then
+            echo "::error::No jars found to attach to the GitHub Release"
+            exit 1
+          fi
+          gh release upload "$GITHUB_REF_NAME" "${artifacts[@]}" --clobber
