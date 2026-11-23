@@ -9,7 +9,7 @@ pluginManagement {
 // Dogfooding: apply the last published plugin from the Gradle Plugin Portal and configure the
 // repository it registers. Bump the version with each release; CI checks that it is the latest.
 plugins {
-    id("net.snobo.artifact-stores") version "0.6.0"
+    id("net.snobo.artifact-stores") version "0.7.0"
 }
 
 artifactStores {
