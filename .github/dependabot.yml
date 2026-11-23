@@ -1,11 +1,13 @@
 version: 2
 
+# Version updates are handled by the self-hosted Renovate runner.
+# Dependabot alerts and security updates remain enabled.
 updates:
   - package-ecosystem: gradle
     directory: "/"
     schedule:
       interval: weekly
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 0
     # Default is 3 days even when omitted. Make the policy explicit.
     cooldown:
       default-days: 7
@@ -18,7 +20,7 @@ updates:
     directory: "/"
     schedule:
       interval: weekly
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 0
     groups:
       github-actions:
         patterns: ["*"]
