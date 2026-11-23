@@ -145,6 +145,7 @@ abstract class ArtifactStoresExtension
             store.headerValue.convention(values.string(StoreField.HEADER_VALUE))
             store.includeGroups.convention(emptyList())
             store.exclusive.convention(false)
+            store.enabled.convention(true)
             store.allowInsecure.convention(true)
             store.forDependencies.convention(true)
             store.forPlugins.convention(true)
