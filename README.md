@@ -302,7 +302,8 @@ stores. It also means the `artifactStores` block belongs in `settings.gradle.kts
 
 Release tags use the form `release/X.Y.Z`. The release workflow requires the tag to be an ancestor of
 `origin/main`, derives the version from the tag, publishes to Reposilite when `reposiliteUrl` and the
-publish token are set, and attests the jars when the repository is public.
+publish token are set, and attests the jars when the repository is public. It then creates a GitHub
+Release for the tag with generated notes and uploads the jars built for that version.
 
 To require signed tags, commit the maintainer's public key under `.github/keys/*.asc` and set the
 repository variable `REQUIRE_SIGNED_TAGS` to `true`. The release job then fails on an unsigned tag
