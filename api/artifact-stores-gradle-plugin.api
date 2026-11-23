@@ -2,6 +2,7 @@ public abstract class net/snobo/artifactstores/ArtifactStore {
 	public fun <init> (Ljava/lang/String;)V
 	public abstract fun getAllowInsecure ()Lorg/gradle/api/provider/Property;
 	public abstract fun getAuth ()Lorg/gradle/api/provider/Property;
+	public abstract fun getEnabled ()Lorg/gradle/api/provider/Property;
 	public abstract fun getExclusive ()Lorg/gradle/api/provider/Property;
 	public abstract fun getForDependencies ()Lorg/gradle/api/provider/Property;
 	public abstract fun getForPlugins ()Lorg/gradle/api/provider/Property;

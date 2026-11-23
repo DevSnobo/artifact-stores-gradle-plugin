@@ -55,6 +55,15 @@ internal sealed interface StoreCredentials {
     ) : StoreCredentials
 }
 
+/** Auth mode for diagnostics. Never includes a username, password or header value. */
+internal val StoreCredentials.mode: String
+    get() =
+        when (this) {
+            StoreCredentials.None -> "none"
+            is StoreCredentials.Basic -> "basic"
+            is StoreCredentials.Header -> "header"
+        }
+
 internal fun ResolvedArtifactStore.repositoryDefinitions(): List<RepositoryDefinition> =
     if (snapshotsUrl == releasesUrl) {
         listOf(RepositoryDefinition(repositoryName, releasesUrl, RepositoryContent.BOTH))
@@ -70,6 +79,10 @@ internal fun ResolvedArtifactStore.repositoryDefinitions(): List<RepositoryDefin
  * disabled store is not validated at all.
  */
 internal fun ArtifactStore.resolve(logger: Logger): ResolvedArtifactStore? {
+    if (!enabled.get()) {
+        logger.info("Artifact store '$name' is disabled; no repository was registered for it.")
+        return null
+    }
     val profile = ArtifactStoreProfiles.of(type.get())
     val dependencies = forDependencies.get()
     val plugins = forPlugins.get()
@@ -95,19 +108,28 @@ internal fun ArtifactStore.resolve(logger: Logger): ResolvedArtifactStore? {
     val allowInsecure = allowInsecure.get()
     requireSecureUrls(allowInsecure, releases, snapshots)
     warnWhenInsecure(logger, allowInsecure, releases, snapshots)
-    return ResolvedArtifactStore(
-        name = name,
-        type = profile.type,
-        repositoryName = repositoryName.orNull?.takeIf { it.isNotBlank() } ?: name,
-        releasesUrl = releases,
-        snapshotsUrl = snapshots,
-        credentials = resolveCredentials(profile, names, logger),
-        includeGroups = groups,
-        exclusive = exclusive,
-        allowInsecure = allowInsecure,
-        forDependencies = dependencies,
-        forPlugins = plugins,
+    val resolved =
+        ResolvedArtifactStore(
+            name = name,
+            type = profile.type,
+            repositoryName = repositoryName.orNull?.takeIf { it.isNotBlank() } ?: name,
+            releasesUrl = releases,
+            snapshotsUrl = snapshots,
+            credentials = resolveCredentials(profile, names, logger),
+            includeGroups = groups,
+            exclusive = exclusive,
+            allowInsecure = allowInsecure,
+            forDependencies = dependencies,
+            forPlugins = plugins,
+        )
+    logger.info(
+        "Artifact store '${resolved.name}' (${resolved.type.id}): " +
+            "releases=${resolved.releasesUrl}, snapshots=${resolved.snapshotsUrl}, " +
+            "auth=${resolved.credentials.mode}, groups=${resolved.includeGroups.ifEmpty { listOf("<none>") }}, " +
+            "repository='${resolved.repositoryName}', dependencies=${resolved.forDependencies}, " +
+            "plugins=${resolved.forPlugins}, exclusive=${resolved.exclusive}",
     )
+    return resolved
 }
 
 private fun ArtifactStore.releaseFromBaseUrl(

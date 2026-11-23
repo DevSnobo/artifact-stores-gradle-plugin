@@ -152,6 +152,16 @@ artifactStores {
 Without `exclusive`, a missing `com.example.internal` artifact can fall through to `central`, which is
 the dependency-confusion risk this mode closes.
 
+### Disabling stores
+
+Set `enabled = false` to keep a store entry in the configuration without registering or validating it.
+This is useful when a store only exists in some environments.
+
+### Diagnostics
+
+Run Gradle with `--info` to print each enabled store's effective releases and snapshots URLs, auth
+mode, group filter, repository name, and registration flags. Credentials are never printed.
+
 ## Multi-store example
 
 Stores are tried in declaration order. Use `includeGroups` to keep each store responsible for its own groups.

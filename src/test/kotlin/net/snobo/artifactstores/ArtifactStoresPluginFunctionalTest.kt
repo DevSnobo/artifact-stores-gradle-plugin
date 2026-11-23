@@ -827,6 +827,54 @@ class ArtifactStoresPluginFunctionalTest {
     }
 
     @Test
+    fun `a disabled store is not validated or registered`() {
+        settings(
+            """
+            nexus("off") {
+                enabled = false
+            }
+            generic("oss") {
+                releasesUrl = uri("${stub.baseUrl}/releases")
+                includeGroups.add("net.snobo.probe")
+            }
+            """,
+            extra = printRepositoryNames(),
+        )
+        write("build.gradle.kts", "plugins { `java-library` }")
+
+        val result = runner("help").build()
+
+        assertTrue(result.output.contains("DEPENDENCY_REPOS=[oss]"), result.output)
+        assertTrue(!result.output.contains("has no releases repository"), result.output)
+        assertTrue(!result.output.contains("no credentials"), result.output)
+    }
+
+    @Test
+    fun `info diagnostics show effective values without secrets`() {
+        credentials()
+        settings(
+            """
+            reposilite("oss") {
+                url = uri("${stub.baseUrl}")
+                includeGroups.add("net.snobo.probe")
+            }
+            """,
+        )
+        write("build.gradle.kts", "plugins { `java-library` }")
+
+        val result = runner("help", "--info").build()
+
+        assertTrue(result.output.contains("Artifact store 'oss' (reposilite)"), result.output)
+        assertTrue(result.output.contains("releases=${stub.baseUrl}/releases"), result.output)
+        assertTrue(result.output.contains("snapshots=${stub.baseUrl}/snapshots"), result.output)
+        assertTrue(result.output.contains("auth=basic"), result.output)
+        assertTrue(result.output.contains("groups=[net.snobo.probe]"), result.output)
+        assertTrue(result.output.contains("repository='oss'"), result.output)
+        assertTrue(!result.output.contains("stub-secret"), result.output)
+        assertTrue(!result.output.contains("net-snobo-publisher"), result.output)
+    }
+
+    @Test
     fun `a fully disabled store is not resolved or validated`() {
         settings(
             """

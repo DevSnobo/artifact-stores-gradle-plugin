@@ -61,6 +61,12 @@ abstract class ArtifactStore
         abstract val exclusive: Property<Boolean>
 
         /**
+         * Register this store. A disabled store is not validated and registers no repository. The
+         * default is true.
+         */
+        abstract val enabled: Property<Boolean>
+
+        /**
          * Opt in to plain HTTP for the created repositories. The default is true. With false, registration
          * fails when a resolved releases or snapshots URL is plain HTTP.
          */
