@@ -1,0 +1,41 @@
+public abstract class net/snobo/artifactstores/ArtifactStore {
+	public fun <init> (Ljava/lang/String;)V
+	public abstract fun getAllowInsecure ()Lorg/gradle/api/provider/Property;
+	public abstract fun getAuth ()Lorg/gradle/api/provider/Property;
+	public abstract fun getForDependencies ()Lorg/gradle/api/provider/Property;
+	public abstract fun getForPlugins ()Lorg/gradle/api/provider/Property;
+	public abstract fun getHeaderName ()Lorg/gradle/api/provider/Property;
+	public abstract fun getHeaderValue ()Lorg/gradle/api/provider/Property;
+	public abstract fun getIncludeGroups ()Lorg/gradle/api/provider/ListProperty;
+	public final fun getName ()Ljava/lang/String;
+	public abstract fun getPassword ()Lorg/gradle/api/provider/Property;
+	public abstract fun getReleasesRepository ()Lorg/gradle/api/provider/Property;
+	public abstract fun getReleasesUrl ()Lorg/gradle/api/provider/Property;
+	public abstract fun getRepositoryName ()Lorg/gradle/api/provider/Property;
+	public abstract fun getSnapshotsRepository ()Lorg/gradle/api/provider/Property;
+	public abstract fun getSnapshotsUrl ()Lorg/gradle/api/provider/Property;
+	public abstract fun getType ()Lorg/gradle/api/provider/Property;
+	public abstract fun getUrl ()Lorg/gradle/api/provider/Property;
+	public abstract fun getUsername ()Lorg/gradle/api/provider/Property;
+}
+
+public abstract class net/snobo/artifactstores/ArtifactStoresExtension {
+	public fun <init> (Lorg/gradle/api/model/ObjectFactory;Lorg/gradle/api/provider/ProviderFactory;)V
+	public final fun artifactory (Ljava/lang/String;)Lnet/snobo/artifactstores/ArtifactStore;
+	public final fun artifactory (Ljava/lang/String;Lorg/gradle/api/Action;)Lnet/snobo/artifactstores/ArtifactStore;
+	public final fun generic (Ljava/lang/String;)Lnet/snobo/artifactstores/ArtifactStore;
+	public final fun generic (Ljava/lang/String;Lorg/gradle/api/Action;)Lnet/snobo/artifactstores/ArtifactStore;
+	public abstract fun getRefreshChangingModules ()Lorg/gradle/api/provider/Property;
+	public abstract fun getRepositoriesMode ()Lorg/gradle/api/provider/Property;
+	public final fun nexus (Ljava/lang/String;)Lnet/snobo/artifactstores/ArtifactStore;
+	public final fun nexus (Ljava/lang/String;Lorg/gradle/api/Action;)Lnet/snobo/artifactstores/ArtifactStore;
+	public final fun reposilite (Ljava/lang/String;)Lnet/snobo/artifactstores/ArtifactStore;
+	public final fun reposilite (Ljava/lang/String;Lorg/gradle/api/Action;)Lnet/snobo/artifactstores/ArtifactStore;
+}
+
+public final class net/snobo/artifactstores/ArtifactStoresPlugin : org/gradle/api/Plugin {
+	public fun <init> ()V
+	public synthetic fun apply (Ljava/lang/Object;)V
+	public fun apply (Lorg/gradle/api/initialization/Settings;)V
+}
+
