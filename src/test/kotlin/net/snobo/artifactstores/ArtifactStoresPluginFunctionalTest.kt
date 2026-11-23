@@ -760,6 +760,73 @@ class ArtifactStoresPluginFunctionalTest {
     }
 
     @Test
+    fun `an exclusive store hides its groups from other repositories`() {
+        restartStub(setOf("exclusive", "fallback"))
+        resolutionProject(
+            """
+            generic("exclusive") {
+                releasesUrl = uri("${stub.baseUrl}/exclusive")
+                includeGroups.add("net.snobo.probe")
+                exclusive = true
+            }
+            generic("fallback") {
+                releasesUrl = uri("${stub.baseUrl}/fallback")
+                includeGroups.add("net.snobo.probe")
+            }
+            """,
+        )
+
+        val result = runner("resolveProbe").build()
+
+        assertTrue(result.output.contains("probe-1.0.jar"), result.output)
+        val exclusiveRequests = stub.requests.filter { it.path.startsWith("/exclusive/net/snobo/probe/") }
+        assertTrue(exclusiveRequests.isNotEmpty(), "expected the exclusive store to resolve: ${stub.requests}")
+        val fallbackRequests = stub.requests.filter { it.path.startsWith("/fallback/") }
+        assertTrue(fallbackRequests.isEmpty(), "the exclusive store must hide the group: ${stub.requests}")
+    }
+
+    @Test
+    fun `an exclusive store does not fall through for a missing artifact`() {
+        restartStub(setOf("fallback"))
+        resolutionProject(
+            """
+            generic("exclusive") {
+                releasesUrl = uri("${stub.baseUrl}/exclusive")
+                includeGroups.add("net.snobo.probe")
+                exclusive = true
+            }
+            generic("fallback") {
+                releasesUrl = uri("${stub.baseUrl}/fallback")
+                includeGroups.add("net.snobo.probe")
+            }
+            """,
+        )
+
+        val result = runner("resolveProbe").buildAndFail()
+
+        assertTrue(result.output.contains("Could not find net.snobo.probe:probe:1.0"), result.output)
+        val fallbackRequests = stub.requests.filter { it.path.startsWith("/fallback/") }
+        assertTrue(fallbackRequests.isEmpty(), "the missing artifact must not fall through: ${stub.requests}")
+    }
+
+    @Test
+    fun `exclusive without includeGroups fails`() {
+        settings(
+            """
+            generic("exclusive") {
+                releasesUrl = uri("${stub.baseUrl}/exclusive")
+                exclusive = true
+            }
+            """,
+        )
+        write("build.gradle.kts", "plugins { `java-library` }")
+
+        val failure = runner("help").buildAndFail()
+
+        assertTrue(failure.output.contains("sets 'exclusive = true' but has no 'includeGroups'"), failure.output)
+    }
+
+    @Test
     fun `a fully disabled store is not resolved or validated`() {
         settings(
             """
