@@ -23,7 +23,8 @@ ARTIFACT_STORE_TEST_GRADLE_VERSION=9.9.1 ./gradlew test
 ```
 
 `check` runs ktlint, plugin validation and the TestKit suite. Functional tests start an in-process
-HTTP stub, so no artifact server or credentials are needed.
+HTTP stub, so no artifact server or credentials are needed. See the
+[compatibility matrix](README.md#compatibility) for the tested Gradle, JDK and OS combinations.
 
 ## Dogfooded plugin version
 
