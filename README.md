@@ -26,6 +26,17 @@ Each store is created by a preset function: `reposilite`, `nexus`, `artifactory`
 applies the default routes, authentication mode and base URL of that product. A configuration block overrides
 anything that differs.
 
+## Compatibility
+
+| Plugin | Gradle | JDK | OS | Configuration cache | Isolated Projects |
+|---|---|---|---|---|---|
+| 0.7.x | 8.14.7 | 17 | Linux | yes | yes |
+| 0.7.x | 9.9.1 | 21 | Linux | yes | yes |
+| 0.7.x | 9.9.1 | 21 | Windows | yes | yes |
+
+macOS, Gradle 8.14.7 on JDK 21, and Gradle 9.9.1 on JDK 17 are not tested. The plugin targets Java 17;
+the build itself requires JDK 21. Add a new Gradle line here and to the CI matrix together.
+
 ## Install
 
 ```kotlin
