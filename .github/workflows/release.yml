@@ -141,15 +141,22 @@ jobs:
         run: |
           set -euo pipefail
           version="${{ steps.release.outputs.version }}"
-          if gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1; then
-            echo "GitHub Release $GITHUB_REF_NAME already exists; replacing its artifacts."
-          else
-            gh release create "$GITHUB_REF_NAME" --title "Artifact stores $version" --generate-notes
-          fi
           shopt -s nullglob
           artifacts=(build/libs/*"$version"*.jar artifact-store-support/build/libs/*"$version"*.jar)
           if [ ${#artifacts[@]} -eq 0 ]; then
             echo "::error::No jars found to attach to the GitHub Release"
             exit 1
           fi
+          if gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1; then
+            # The repository may publish immutable releases, so assets cannot be added after the
+            # release is published. A draft is still mutable; a published release is left unchanged.
+            draft=$(gh release view "$GITHUB_REF_NAME" --json isDraft --jq '.isDraft')
+            if [ "$draft" != "true" ]; then
+              echo "GitHub Release $GITHUB_REF_NAME already exists; leaving it unchanged."
+              exit 0
+            fi
+          else
+            gh release create "$GITHUB_REF_NAME" --draft --title "Artifact stores $version" --generate-notes
+          fi
           gh release upload "$GITHUB_REF_NAME" "${artifacts[@]}" --clobber
+          gh release edit "$GITHUB_REF_NAME" --draft=false
