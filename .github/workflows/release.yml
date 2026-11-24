@@ -142,7 +142,14 @@ jobs:
           set -euo pipefail
           version="${{ steps.release.outputs.version }}"
           shopt -s nullglob
-          artifacts=(build/libs/*"$version"*.jar artifact-store-support/build/libs/*"$version"*.jar)
+          # The test fixtures and the unshaded main jar are build outputs, not published artifacts.
+          artifacts=()
+          for jar in build/libs/*"$version"*.jar artifact-store-support/build/libs/*"$version"*.jar; do
+            case "$jar" in
+              *-test-fixtures.jar|*-main.jar) continue ;;
+            esac
+            artifacts+=("$jar")
+          done
           if [ ${#artifacts[@]} -eq 0 ]; then
             echo "::error::No jars found to attach to the GitHub Release"
             exit 1
